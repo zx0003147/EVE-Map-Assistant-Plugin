@@ -1,50 +1,53 @@
 # EVE Map Assistant
 
-EVE Map Assistant is a Codex Plugin and Skill for controlling EVE Static Map Planner through the separately registered `eve-static-map` MCP server. It plans and visualizes systems, normal and capital routes, jump ranges, markers, and temporary AI-owned map missions.
+EVE Map Assistant is a Codex Plugin and Skill for controlling EVE Static Map Planner. Plugin 0.2.0 bundles the `eve-static-map` MCP definition and starts the stable `eve-map-mcp.exe` command installed by EVE Static Map Planner 0.2.1 or later.
 
-Repository URL: pending publication.
+Repository: [zx0003147/EVE-Map-Assistant-Plugin](https://github.com/zx0003147/EVE-Map-Assistant-Plugin)
 
 ## Requirements
 
 - Windows
-- EVE Static Map Planner installed
-- **Preferences > AI Control** enabled in the map application
+- EVE Static Map Planner 0.2.1 or later installed
+- **Preferences > AI Control** enabled in the running map application
 - Codex with local Plugin and STDIO MCP support
-- The `eve-static-map` MCP server registered and enabled
 
 ## Architecture
 
 ```text
 Codex
   -> EVE Map Assistant Skill
-  -> eve-static-map MCP
-  -> EVE Map MCP Bridge
-  -> EVE Static Map Planner
+  -> bundled eve-static-map MCP definition
+  -> eve-map-mcp.exe on per-user PATH
+  -> EVE Static Map Planner AI Control
 ```
 
-The Plugin follows Gate B: it does not bundle `.mcp.json` or embed a machine-specific bridge path. MCP registration remains separate from Plugin distribution.
+The Plugin contains only metadata, its Skill, and the portable MCP definition. The Map MSI owns the executable and its per-user PATH entry. Neither side stores a control port, session secret, Windows username, or machine-specific absolute path in the Plugin.
 
-## Install Plugin from this repository
+## Install
 
-From this repository root, add its local marketplace and install the Plugin:
+1. Install or upgrade to EVE Static Map Planner 0.2.1 or later.
+2. Start the map and enable **Preferences > AI Control**.
+3. Add this local marketplace and install the Plugin from this repository:
+
+   ```text
+   codex plugin marketplace add "."
+   codex plugin add eve-map-assistant@personal
+   ```
+
+4. Fully restart Codex or start a new Codex process so it inherits the updated Windows PATH, then open a new task.
+5. Use `@EVE Map Assistant`.
+
+No `codex mcp add` command is required for a new Gate A installation. If the Plugin tools cannot start, verify that EVE Static Map Planner 0.2.1 or later is installed and restart Codex; do not add a development launcher or shell wrapper.
+
+## Legacy Gate B migration
+
+Codex 0.149.0 gives a same-named global MCP configuration precedence over a Plugin-bundled server. That is non-fatal, but the older registration masks the bundled command. After upgrading the map and Plugin, remove only the legacy global registration once:
 
 ```text
-codex plugin marketplace add "."
-codex plugin add eve-map-assistant@personal
+codex mcp remove eve-static-map
 ```
 
-Start a new Codex task after installation so the Plugin, Skill, and MCP dependency are loaded. Do not remove a currently working installation merely to test this repository; migrate it only when you intend to switch sources.
-
-## MCP Registration
-
-The Plugin does not automatically register the local MCP bridge. Register the executable installed with EVE Static Map Planner by using its actual path:
-
-```text
-codex mcp add eve-static-map -- "<path-to-installed-EVE Map MCP Bridge.exe>"
-codex mcp get eve-static-map
-```
-
-Start the bridge executable directly. Do not use a PowerShell, cmd, or script wrapper, and do not place a username, control port, or credential in the Plugin files.
+Then fully restart Codex. Do not run another `codex mcp add`; the Plugin supplies `eve-static-map`. The Map installer and Plugin never modify or remove Codex global configuration themselves.
 
 ## Usage
 
@@ -62,6 +65,8 @@ Visual Mission example:
 创建一个临时任务 Delve Move，显示普通路线，添加 RALLY 和 DESTINATION 标记，显示 5 LY 跳跃范围，并适配整个任务视图。
 ```
 
+If the map is not running or AI Control is disabled, the MCP server still initializes and lists its tools, while map calls return `APP_DISCONNECTED`.
+
 ## Safety
 
 EVE Map Assistant:
@@ -74,7 +79,7 @@ EVE Map Assistant:
 
 ## Version
 
-Plugin version: `0.1.0`.
+Plugin version: `0.2.0`.
 
 The Plugin version is independent from the EVE Static Map Planner application version.
 

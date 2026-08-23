@@ -1,11 +1,12 @@
 {
   "name": "eve-map-assistant",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plan and visualize EVE Online routes, jump ranges, markers, and temporary map missions in EVE Static Map Planner.",
   "author": {
     "name": "EVE Static Map Planner"
   },
   "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "EVE Map Assistant",
     "shortDescription": "Plan and control temporary EVE map missions",

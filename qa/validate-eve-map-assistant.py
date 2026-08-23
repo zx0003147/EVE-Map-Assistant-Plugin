@@ -51,11 +51,13 @@ def main() -> int:
     skill_path = skill_dir / "SKILL.md"
     openai_yaml_path = skill_dir / "agents" / "openai.yaml"
     manifest_path = plugin / ".codex-plugin" / "plugin.json"
+    mcp_path = plugin / ".mcp.json"
     marketplace_path = root / ".agents" / "plugins" / "marketplace.json"
     cases_path = root / "qa" / "eve-map-assistant-cases.json"
     readme_path = root / "README.md"
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    mcp = json.loads(mcp_path.read_text(encoding="utf-8"))
     marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
     cases = json.loads(cases_path.read_text(encoding="utf-8"))["cases"]
     skill = skill_path.read_text(encoding="utf-8")
@@ -63,18 +65,31 @@ def main() -> int:
     readme = readme_path.read_text(encoding="utf-8")
 
     require(manifest["name"] == "eve-map-assistant", "Unexpected plugin name")
-    require(manifest["version"] == "0.1.0", "Plugin version must start at 0.1.0")
+    require(manifest["version"] == "0.2.0", "Gate A Plugin version must be 0.2.0")
     require(manifest["skills"] == "./skills/", "Plugin must point to bundled skills")
-    require("mcpServers" not in manifest, "Gate B plugin must not bundle a non-portable MCP command")
-    require(not (plugin / ".mcp.json").exists(), "Gate B plugin must not contain .mcp.json")
+    require(manifest["mcpServers"] == "./.mcp.json", "Plugin must link the bundled MCP companion file")
+    require(set(mcp) == {"mcpServers"}, "Bundled MCP file must use the current mcpServers wrapper")
+    require(set(mcp["mcpServers"]) == {"eve-static-map"}, "Plugin must bundle exactly eve-static-map")
+    server = mcp["mcpServers"]["eve-static-map"]
+    require(server == {"command": "eve-map-mcp.exe"}, "Bundled MCP must use only the stable launcher command")
+    command = server["command"]
+    require(not Path(command).is_absolute() and ":" not in command and "/" not in command and "\\" not in command,
+            "Bundled MCP command must be a portable executable name")
+    require(not any(shell in command.lower() for shell in ["powershell", "cmd", "bash", ".bat", ".ps1"]),
+            "Bundled MCP command must not use a shell or wrapper")
 
     entries = [entry for entry in marketplace["plugins"] if entry["name"] == manifest["name"]]
+    require(marketplace["name"] == "personal", "Unexpected marketplace name")
+    require(marketplace.get("interface") == {"displayName": "Personal"}, "Unexpected marketplace interface")
     require(len(entries) == 1, "Marketplace must expose the plugin exactly once")
-    require(entries[0]["source"]["path"] == "./plugins/eve-map-assistant", "Unexpected marketplace source path")
+    require(entries[0]["source"] == {"source": "local", "path": "./plugins/eve-map-assistant"},
+            "Unexpected marketplace source")
     require(entries[0]["policy"] == {"installation": "AVAILABLE", "authentication": "ON_INSTALL"}, "Unexpected marketplace policy")
+    require(entries[0]["category"] == "Productivity", "Unexpected marketplace category")
 
-    require('value: "eve-static-map"' in openai_yaml, "Skill must declare the separately registered MCP dependency")
-    require("transport:" not in openai_yaml and "url:" not in openai_yaml, "Gate B dependency must not invent a transport or URL")
+    require('value: "eve-static-map"' in openai_yaml, "Skill must declare the bundled MCP dependency")
+    require("plugin-bundled local mcp integration" in openai_yaml.lower(), "Dependency description must state Gate A ownership")
+    require("transport:" not in openai_yaml and "url:" not in openai_yaml, "Dependency must not invent a transport or URL")
     require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md tool contract must contain exactly the fixed 20 tools")
 
     artifact_text = "\n".join([
@@ -82,6 +97,7 @@ def main() -> int:
         openai_yaml,
         readme,
         json.dumps(manifest),
+        json.dumps(mcp),
         json.dumps(marketplace),
         json.dumps(cases),
     ])
@@ -123,14 +139,15 @@ def main() -> int:
         require(required <= all_tools and forbidden <= all_tools, f"{case['name']} declares an unknown tool")
         require(required.isdisjoint(forbidden), f"{case['name']} requires and forbids the same tool")
 
-    require('"<path-to-installed-EVE Map MCP Bridge.exe>"' in readme, "README must quote a portable path-with-spaces placeholder")
-    require("Repository URL: pending publication" in readme, "README must not invent a publication URL")
-    require("Plugin version: `0.1.0`" in readme, "README must state the independent Plugin version")
-    require("codex mcp get eve-static-map" in readme, "README must include the MCP registration check")
+    require("EVE Static Map Planner 0.2.1 or later" in readme, "README must state the stable launcher prerequisite")
+    require("Plugin version: `0.2.0`" in readme, "README must state the independent Plugin version")
+    require("No `codex mcp add` command is required" in readme, "README must make Gate A the normal install path")
+    require("codex mcp remove eve-static-map" in readme, "README must include the one-time Gate B migration")
+    require("fully restart Codex" in readme, "README must explain Windows process environment refresh")
     require("codex plugin marketplace add \".\"" in readme, "README must include local marketplace installation")
     require("codex plugin add eve-map-assistant@personal" in readme, "README must include the Plugin install command")
 
-    print("EVE Map Assistant contract validation passed (20 tools, Gate B, 5 behavior cases).")
+    print("EVE Map Assistant contract validation passed (20 tools, Gate A bundled MCP, 5 behavior cases).")
     return 0
 
 

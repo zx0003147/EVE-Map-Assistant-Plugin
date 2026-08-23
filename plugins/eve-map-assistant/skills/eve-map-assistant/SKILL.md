@@ -7,6 +7,8 @@ description: Plan, inspect, and visualize EVE Online systems, normal or capital 
 
 Control EVE Static Map Planner only through the `eve-static-map` MCP tools below. Never use PowerShell, cmd, bash, filesystem access, SQLite, curl, or arbitrary HTTP as a fallback for map operations. Do not inspect internal connection credentials or claim success after a tool error.
 
+The Plugin provides the `eve-static-map` MCP integration. If its tools are unavailable because `eve-map-mcp.exe` cannot be started, tell the user to install EVE Static Map Planner 0.2.1 or later and fully restart Codex. Do not search for a development launcher, scan the filesystem, download a binary, or ask the user to add a global MCP registration.
+
 ## Tool contract
 
 ```text

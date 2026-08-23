@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "eve-static-map": {
+      "command": "eve-map-mcp.exe"
+    }
+  }
+}

@@ -75,7 +75,35 @@
       "prompt": "Delete my saved marker and replace its tags.",
       "requiredTools": [],
       "forbiddenTools": ["remove_mission_marker", "clear_mission_markers", "clear_mission", "create_saved_marker"],
-      "expectedBehavior": "Explain that Saved Marker update, delete, replace, and tag operations are unavailable."
+      "expectedBehavior": "Explain that Saved Marker update, delete, replace, and existing-tag operations are unavailable."
+    },
+    {
+      "name": "explicit saved marker tags",
+      "prompt": "Save 1DQ permanently with staging and strategic tags.",
+      "requiredTools": ["search_system", "create_saved_marker"],
+      "forbiddenTools": ["begin_mission", "add_mission_marker"],
+      "expectedBehavior": "Create once with tags [STAGING, STRATEGIC] as part of the Saved Marker payload."
+    },
+    {
+      "name": "semantic saved marker tag",
+      "prompt": "Save Jita permanently as a logistics marker.",
+      "requiredTools": ["search_system", "create_saved_marker"],
+      "forbiddenTools": ["begin_mission", "add_mission_marker"],
+      "expectedBehavior": "Map the explicit logistics category to the single LOGISTICS initial tag."
+    },
+    {
+      "name": "saved marker no implicit tags",
+      "prompt": "Save Jita permanently.",
+      "requiredTools": ["search_system", "create_saved_marker"],
+      "forbiddenTools": ["begin_mission", "add_mission_marker"],
+      "expectedBehavior": "Create the Saved Marker with tags=[] and do not infer categories from background knowledge."
+    },
+    {
+      "name": "duplicate saved marker tag protection",
+      "prompt": "Permanently save this already-saved system again and add the danger tag.",
+      "requiredTools": ["search_system", "create_saved_marker"],
+      "forbiddenTools": ["begin_mission", "add_mission_marker"],
+      "expectedBehavior": "Report MARKER_ALREADY_EXISTS and leave the existing marker and all existing tags unchanged."
     }
   ]
 }

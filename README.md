@@ -72,6 +72,8 @@ Temporary marker requests such as `标记一下 Jita` create a session-only Miss
 把 Jita 永久保存为 Logistics。
 ```
 
+Initial tags can be included in the same permanent create request, for example `永久保存 1DQ，并加 staging 和 strategic 标签`. Tags are create-time data only; the Plugin cannot add or remove tags on an existing Saved Marker.
+
 Saved Marker read/create requires **Preferences > AI Control > Saved Marker Access**. If it is disabled, the Plugin reports the denial and does not substitute a temporary marker.
 
 If the map is not running or AI Control is disabled, the MCP server still initializes and lists its tools, while map calls return `APP_DISCONNECTED`.
@@ -83,7 +85,8 @@ EVE Map Assistant:
 - uses only the fixed 22 `eve-static-map` tools;
 - defaults ordinary marker requests to temporary Mission-owned state;
 - reads or creates Saved Markers only through permission-gated tools after explicit user intent;
-- cannot update, overwrite, delete, clear, tag, or add children to Saved Markers;
+- can set supported initial tags only while creating a Saved Marker;
+- cannot update, overwrite, delete, clear, or change tags or children on an existing Saved Marker;
 - does not mutate Ansiblex connections or preferences;
 - does not read local databases or secrets; and
 - does not use Shell, filesystem, database, or arbitrary HTTP fallbacks for map control.

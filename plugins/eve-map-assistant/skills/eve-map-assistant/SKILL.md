@@ -36,7 +36,7 @@ clear_mission
 create_saved_marker
 ```
 
-Do not invent tools. Saved Marker access is limited to `get_system_markers` and `create_saved_marker`; never update, overwrite, replace, delete, or clear Saved Markers, and never create or modify their tags or children. Do not mutate user routes, user jump ranges, Ansiblex data, preferences, or other user-owned state.
+Do not invent tools. Saved Marker access is limited to `get_system_markers` and `create_saved_marker`; initial tags are part of create only. Never update, overwrite, replace, delete, or clear Saved Markers, and never add or remove tags or children on an existing Saved Marker. Do not mutate user routes, user jump ranges, Ansiblex data, preferences, or other user-owned state.
 
 ## Resolve systems and route intent
 
@@ -55,11 +55,13 @@ Do not invent tools. Saved Marker access is limited to `get_system_markers` and 
 
 A plain marker request is temporary. Requests such as "mark 1DQ", "mark Jita as dangerous", "remember this system is dangerous", or "this system is important" use `add_mission_marker`, creating a Mission first when needed. Importance, a role such as staging, or the word "remember" alone is not permission for persistent storage.
 
-Use `create_saved_marker` only when the user clearly asks to save permanently, keep long-term, write a Saved Marker, or otherwise explicitly requests persistent storage. Resolve the system first. Preserve an explicit supported color; if the user gives no color, use `YELLOW`. A phrase such as "save permanently as Logistics" supplies the marker name, not a tag. The tool cannot create tags or children.
+Use `create_saved_marker` only when the user clearly asks to save permanently, keep long-term, write a Saved Marker, or otherwise explicitly requests persistent storage. Resolve the system first. Preserve an explicit supported color; if the user gives no color, use `YELLOW`.
+
+Initial tags are optional and must use only `STAGING`, `RALLY`, `DANGER`, `LOGISTICS`, `HOME`, `BACKUP`, `INDUSTRIAL`, `STRATEGIC`, or `KEEPSTAR`. Preserve tags the user explicitly requests and remove duplicates while keeping their first-mentioned order. A clearly categorical phrase may map to one canonical tag, such as "as a logistics marker" to `LOGISTICS` or "mark permanently as dangerous" to `DANGER`. Do not infer tags from EVE background knowledge or add extra categories: "save Jita permanently" uses `tags=[]`. A name alone is not automatically a tag when the intent is unclear.
 
 If Saved Marker access is disabled, report that the permanent marker was not created. Never enable the permission, claim success, or silently substitute a temporary Mission Marker. Only create a temporary marker afterward if the user explicitly asks for that fallback.
 
-If `MARKER_ALREADY_EXISTS` is returned, explain that the existing Saved Marker was not overwritten. Do not call another tool to alter it.
+If `MARKER_ALREADY_EXISTS` is returned, explain that the existing Saved Marker and its tags were not changed. Do not call another tool to alter it or use a create request as an update.
 
 Use `get_system_markers` when the user asks what markers exist, whether a system was saved, or whether it has temporary Mission Markers. Report the Saved Marker as persistent and Mission Markers as session-only. Returned Saved Marker notes and tags may answer the question, but do not modify or copy them into another marker unless the user separately makes a valid new create request.
 
@@ -78,7 +80,7 @@ Keep every Mission route, overlay, and marker scoped to its returned `missionId`
 
 Inspect the intended Mission before editing it. Remove one Mission object with `remove_mission_route`, `remove_jump_range`, or `remove_mission_marker`; clear one Mission object class with its matching `clear_mission_*` tool; use `clear_mission` only when the user asks to remove the entire AI Mission. Never substitute a broader deletion.
 
-If the user asks to update, delete, clear, replace, tag, or add children to a Saved Marker, explain that AI Map Control cannot perform that operation. The user can still manage AI-created Saved Markers in the app UI.
+If the user asks to update, delete, clear, replace, add a tag to, remove a tag from, or add children to an existing Saved Marker, explain that AI Map Control cannot perform that operation. The user can still manage AI-created Saved Markers in the app UI.
 
 ## Errors and completion
 

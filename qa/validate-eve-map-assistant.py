@@ -130,8 +130,11 @@ def main() -> int:
         "importance, a role such as staging, or the word \"remember\" alone is not permission",
         "use `create_saved_marker` only when the user clearly asks",
         "never enable the permission, claim success, or silently substitute",
-        "the existing saved marker was not overwritten",
+        "the existing saved marker and its tags were not changed",
         "report the saved marker as persistent and mission markers as session-only",
+        "initial tags are optional",
+        "do not infer tags from eve background knowledge",
+        "never add or remove tags or children on an existing saved marker",
     ]:
         require(required_rule in skill.lower(), f"SKILL.md is missing Saved Marker safety rule: {required_rule}")
 
@@ -149,6 +152,10 @@ def main() -> int:
         "saved and Mission marker query",
         "ambiguous remember stays temporary",
         "saved marker mutation protection",
+        "explicit saved marker tags",
+        "semantic saved marker tag",
+        "saved marker no implicit tags",
+        "duplicate saved marker tag protection",
     }, "Behavior contract cases are incomplete")
     for case in cases:
         required = set(case["requiredTools"])
@@ -165,7 +172,7 @@ def main() -> int:
     require("codex plugin marketplace add \".\"" in readme, "README must include local marketplace installation")
     require("codex plugin add eve-map-assistant@personal" in readme, "README must include the Plugin install command")
 
-    print("EVE Map Assistant contract validation passed (22 tools, Saved Marker read/create gated, 11 behavior cases).")
+    print("EVE Map Assistant contract validation passed (22 tools, atomic Saved Marker create tags gated, 15 behavior cases).")
     return 0
 
 

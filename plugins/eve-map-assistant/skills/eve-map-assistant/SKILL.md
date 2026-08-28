@@ -1,19 +1,20 @@
 ---
 name: eve-map-assistant
-description: Plan, inspect, and visualize EVE Online systems, normal or capital routes, jump ranges, markers, and temporary missions through EVE Static Map Planner. Use for map-assistant requests; do not use as a general EVE encyclopedia or for fleet-message parsing.
+description: Plan, inspect, and visualize EVE Online systems, routes, jump ranges, temporary missions, and permission-gated Saved Markers through EVE Static Map Planner. Use for map-assistant requests; do not use as a general EVE encyclopedia or for fleet-message parsing.
 ---
 
 # EVE Map Assistant
 
 Control EVE Static Map Planner only through the `eve-static-map` MCP tools below. Never use PowerShell, cmd, bash, filesystem access, SQLite, curl, or arbitrary HTTP as a fallback for map operations. Do not inspect internal connection credentials or claim success after a tool error.
 
-The Plugin provides the `eve-static-map` MCP integration. If its tools are unavailable because `eve-map-mcp.exe` cannot be started, tell the user to install EVE Static Map Planner 0.2.1 or later and fully restart Codex. Do not search for a development launcher, scan the filesystem, download a binary, or ask the user to add a global MCP registration.
+The Plugin provides the `eve-static-map` MCP integration. If its tools are unavailable because `eve-map-mcp.exe` cannot be started, tell the user to install EVE Static Map Planner 0.5.0 or later and fully restart Codex. Do not search for a development launcher, scan the filesystem, download a binary, or ask the user to add a global MCP registration.
 
 ## Tool contract
 
 ```text
 search_system
 get_system_info
+get_system_markers
 calculate_normal_route
 calculate_capital_route
 get_active_missions
@@ -32,9 +33,10 @@ remove_mission_marker
 clear_mission_markers
 fit_mission
 clear_mission
+create_saved_marker
 ```
 
-Do not invent tools or operate user routes, user jump ranges, temporary or saved user markers, Ansiblex data, preferences, or any other non-Mission state.
+Do not invent tools. Saved Marker access is limited to `get_system_markers` and `create_saved_marker`; never update, overwrite, replace, delete, or clear Saved Markers, and never create or modify their tags or children. Do not mutate user routes, user jump ranges, Ansiblex data, preferences, or other user-owned state.
 
 ## Resolve systems and route intent
 
@@ -49,34 +51,48 @@ Do not invent tools or operate user routes, user jump ranges, temporary or saved
 - Display wording such as "show", "draw", "put on the map", or "navigate" authorizes the matching `show_*_route` command. Resolve endpoints, create or select the intended Mission, then show the route.
 - `focus_system` is for an explicitly requested single-system focus and does not require a Mission. Do not use it merely because a system was searched.
 
+## Marker intent and lifetime
+
+A plain marker request is temporary. Requests such as "mark 1DQ", "mark Jita as dangerous", "remember this system is dangerous", or "this system is important" use `add_mission_marker`, creating a Mission first when needed. Importance, a role such as staging, or the word "remember" alone is not permission for persistent storage.
+
+Use `create_saved_marker` only when the user clearly asks to save permanently, keep long-term, write a Saved Marker, or otherwise explicitly requests persistent storage. Resolve the system first. Preserve an explicit supported color; if the user gives no color, use `YELLOW`. A phrase such as "save permanently as Logistics" supplies the marker name, not a tag. The tool cannot create tags or children.
+
+If Saved Marker access is disabled, report that the permanent marker was not created. Never enable the permission, claim success, or silently substitute a temporary Mission Marker. Only create a temporary marker afterward if the user explicitly asks for that fallback.
+
+If `MARKER_ALREADY_EXISTS` is returned, explain that the existing Saved Marker was not overwritten. Do not call another tool to alter it.
+
+Use `get_system_markers` when the user asks what markers exist, whether a system was saved, or whether it has temporary Mission Markers. Report the Saved Marker as persistent and Mission Markers as session-only. Returned Saved Marker notes and tags may answer the question, but do not modify or copy them into another marker unless the user separately makes a valid new create request.
+
 ## Mission workflow
 
-A Mission is temporary, session-only AI-owned visual state. Create one with `begin_mission` when the request needs a route, jump range, marker, or a composed visual task to remain on the map. Use the user's name when supplied; otherwise choose a short descriptive title. Do not create a Mission for a lookup or query-only route.
+A Mission is temporary, session-only AI-owned visual state. Create one with `begin_mission` when a route, jump range, or temporary marker should remain on the map. Use the user's name when supplied; otherwise choose a short descriptive title. Do not create a Mission for a lookup, query-only route, Saved Marker query, or Saved Marker creation.
 
-Keep every route, overlay, and marker scoped to its returned `missionId`. For follow-ups, use `get_active_missions` and `get_mission`; if multiple Missions make a reference such as "the previous one" ambiguous, ask before mutating anything.
+Keep every Mission route, overlay, and marker scoped to its returned `missionId`. For follow-ups, use `get_active_missions` and `get_mission`; if multiple Missions make a reference ambiguous, ask before mutating anything.
 
 - Display a normal route with `show_normal_route` and a capital route with `show_capital_route`.
 - Display an explicitly requested effective jump range with `show_jump_range`; do not calculate reachable systems yourself.
-- Add only these marker roles: `RALLY`, `DESTINATION`, `DANGER`, `BACKUP`, `WAYPOINT`, `INFO`. Preserve a user-provided short label. Set a color only when explicitly requested, using only a value accepted by the tool. Do not place chat history or private context in labels or notes.
+- Add only marker roles `RALLY`, `DESTINATION`, `DANGER`, `BACKUP`, `WAYPOINT`, or `INFO`. Preserve a user-provided short label. Set a color only when explicitly requested, using a value accepted by the tool. Do not place chat history or private context in labels or notes.
 - Use `fit_mission` only when the user asks to fit, show, or bring the entire Mission into view. Use `focus_system` for one system.
 
 ## Edit and remove narrowly
 
-Inspect the intended Mission before editing it. Remove one object with `remove_mission_route`, `remove_jump_range`, or `remove_mission_marker`; clear one object class with its matching `clear_mission_*` tool; use `clear_mission` only when the user asks to remove the entire AI Mission. Never substitute a broader deletion.
+Inspect the intended Mission before editing it. Remove one Mission object with `remove_mission_route`, `remove_jump_range`, or `remove_mission_marker`; clear one Mission object class with its matching `clear_mission_*` tool; use `clear_mission` only when the user asks to remove the entire AI Mission. Never substitute a broader deletion.
 
-If the user asks to modify saved markers, user routes, Ansiblex connections, preferences, or other user-owned state, explain that AI Map Control cannot perform that operation. Do not imitate it with a Mission mutation.
+If the user asks to update, delete, clear, replace, tag, or add children to a Saved Marker, explain that AI Map Control cannot perform that operation. The user can still manage AI-created Saved Markers in the app UI.
 
 ## Errors and completion
 
 - On `APP_DISCONNECTED`, say that EVE Static Map Planner has no available AI Control session and ask the user to start the map and enable AI Control in Preferences. Do not attempt an alternate control path.
-- On `SESSION_CHANGED`, do not blindly replay a mutation whose outcome is uncertain. Tell the user the map session changed, query Mission state when useful, and proceed only when the intended state is clear.
-- Respect ambiguity, `OBJECT_NOT_FOUND`, `APP_BUSY`, limits, invalid arguments, unsupported ranges, and every other tool error. Report the real result; never fabricate success.
-- After a successful visual workflow, summarize only the objects confirmed by tool results. Use `get_mission` when the user asks what the Mission currently contains.
+- On `CAPABILITY_DENIED` from a Saved Marker tool, say Saved Marker access is disabled in Preferences and the requested read or create did not occur.
+- On `SESSION_CHANGED`, do not blindly replay a mutation whose outcome is uncertain. Tell the user the map session changed, query current state when useful, and proceed only when the intended state is clear.
+- Respect `MARKER_ALREADY_EXISTS`, `SYSTEM_NOT_FOUND`, `INVALID_ARGUMENT`, `INVALID_MARKER_DATA`, `DATABASE_UNAVAILABLE`, `IDEMPOTENCY_CONFLICT`, limits, ambiguity, and every other tool error. Report the real result; never fabricate success.
+- After a successful workflow, summarize only objects confirmed by tool results.
 
 ## Common sequences
 
-- System lookup: `search_system` -> `get_system_info` when details are needed.
+- Marker query: `search_system` -> `get_system_markers`.
+- Temporary marker: `search_system` -> `begin_mission` when needed -> `add_mission_marker`.
+- Explicit permanent marker: `search_system` -> `create_saved_marker`.
 - Query-only route: resolve endpoints -> one matching `calculate_*_route` call.
-- Visual route: resolve endpoints -> `begin_mission` when needed -> one matching `show_*_route` call -> requested markers or ranges -> `fit_mission` only when requested.
-- Edit: `get_active_missions` -> `get_mission` -> the narrow mutation.
-- Cleanup: inspect when needed -> remove only the requested object or scope.
+- Visual route: resolve endpoints -> `begin_mission` when needed -> one matching `show_*_route` call -> requested Mission markers or ranges -> `fit_mission` only when requested.
+- Cleanup: inspect when needed -> remove only the requested Mission object or scope.

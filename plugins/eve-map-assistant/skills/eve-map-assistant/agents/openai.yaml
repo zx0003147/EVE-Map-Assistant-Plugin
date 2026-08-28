@@ -1,7 +1,7 @@
 interface:
   display_name: "EVE Map Assistant"
-  short_description: "Plan and control temporary EVE map missions"
-  default_prompt: "Use $eve-map-assistant to plan and visualize an EVE map route."
+  short_description: "Plan EVE routes and authorized map markers"
+  default_prompt: "Use $eve-map-assistant to plan a route or safely mark an EVE system."
 
 dependencies:
   tools:

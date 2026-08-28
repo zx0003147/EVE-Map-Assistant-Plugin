@@ -12,6 +12,7 @@ from pathlib import Path
 EXPECTED_TOOLS = [
     "search_system",
     "get_system_info",
+    "get_system_markers",
     "calculate_normal_route",
     "calculate_capital_route",
     "get_active_missions",
@@ -30,6 +31,7 @@ EXPECTED_TOOLS = [
     "clear_mission_markers",
     "fit_mission",
     "clear_mission",
+    "create_saved_marker",
 ]
 
 
@@ -65,7 +67,7 @@ def main() -> int:
     readme = readme_path.read_text(encoding="utf-8")
 
     require(manifest["name"] == "eve-map-assistant", "Unexpected plugin name")
-    require(manifest["version"] == "0.2.0", "Gate A Plugin version must be 0.2.0")
+    require(manifest["version"] == "0.3.0", "Phase 5 Plugin version must be 0.3.0")
     require(manifest["skills"] == "./skills/", "Plugin must point to bundled skills")
     require(manifest["mcpServers"] == "./.mcp.json", "Plugin must link the bundled MCP companion file")
     require(set(mcp) == {"mcpServers"}, "Bundled MCP file must use the current mcpServers wrapper")
@@ -90,7 +92,7 @@ def main() -> int:
     require('value: "eve-static-map"' in openai_yaml, "Skill must declare the bundled MCP dependency")
     require("plugin-bundled local mcp integration" in openai_yaml.lower(), "Dependency description must state Gate A ownership")
     require("transport:" not in openai_yaml and "url:" not in openai_yaml, "Dependency must not invent a transport or URL")
-    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md tool contract must contain exactly the fixed 20 tools")
+    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md tool contract must contain exactly the fixed 22 tools")
 
     artifact_text = "\n".join([
         skill,
@@ -123,6 +125,15 @@ def main() -> int:
         "SKILL.md must explicitly prohibit shell, filesystem, database, and HTTP fallbacks",
     )
     require("saved markers" in skill.lower() and "ansiblex" in skill.lower(), "SKILL.md must protect user-owned state")
+    for required_rule in [
+        "a plain marker request is temporary",
+        "importance, a role such as staging, or the word \"remember\" alone is not permission",
+        "use `create_saved_marker` only when the user clearly asks",
+        "never enable the permission, claim success, or silently substitute",
+        "the existing saved marker was not overwritten",
+        "report the saved marker as persistent and mission markers as session-only",
+    ]:
+        require(required_rule in skill.lower(), f"SKILL.md is missing Saved Marker safety rule: {required_rule}")
 
     all_tools = set(EXPECTED_TOOLS)
     case_names = {case["name"] for case in cases}
@@ -131,23 +142,30 @@ def main() -> int:
         "visual normal mission",
         "visual capital mission",
         "disconnected safety",
-        "saved marker protection",
+        "temporary marker default",
+        "explicit permanent marker",
+        "saved marker permission denied",
+        "saved marker duplicate",
+        "saved and Mission marker query",
+        "ambiguous remember stays temporary",
+        "saved marker mutation protection",
     }, "Behavior contract cases are incomplete")
     for case in cases:
         required = set(case["requiredTools"])
         forbidden = set(case["forbiddenTools"])
         require(required <= all_tools and forbidden <= all_tools, f"{case['name']} declares an unknown tool")
         require(required.isdisjoint(forbidden), f"{case['name']} requires and forbids the same tool")
+        require(bool(case.get("expectedBehavior", "").strip()), f"{case['name']} is missing expected behavior")
 
-    require("EVE Static Map Planner 0.2.1 or later" in readme, "README must state the stable launcher prerequisite")
-    require("Plugin version: `0.2.0`" in readme, "README must state the independent Plugin version")
+    require("EVE Static Map Planner 0.5.0 or later" in readme, "README must state the Saved Marker prerequisite")
+    require("Plugin version: `0.3.0`" in readme, "README must state the independent Plugin version")
     require("No `codex mcp add` command is required" in readme, "README must make Gate A the normal install path")
     require("codex mcp remove eve-static-map" in readme, "README must include the one-time Gate B migration")
     require("fully restart Codex" in readme, "README must explain Windows process environment refresh")
     require("codex plugin marketplace add \".\"" in readme, "README must include local marketplace installation")
     require("codex plugin add eve-map-assistant@personal" in readme, "README must include the Plugin install command")
 
-    print("EVE Map Assistant contract validation passed (20 tools, Gate A bundled MCP, 5 behavior cases).")
+    print("EVE Map Assistant contract validation passed (22 tools, Saved Marker read/create gated, 11 behavior cases).")
     return 0
 
 

@@ -1,7 +1,7 @@
 {
   "name": "eve-map-assistant",
-  "version": "0.4.0",
-  "description": "Plan EVE Online routes, temporary missions, and permission-gated Saved Markers in EVE Static Map Planner.",
+  "version": "0.5.0",
+  "description": "Find EVE systems and safely plan, inspect, or visualize routes and markers in EVE Static Map Planner.",
   "author": {
     "name": "EVE Static Map Planner"
   },
@@ -9,15 +9,15 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "EVE Map Assistant",
-    "shortDescription": "Plan routes and authorized map markers",
-    "longDescription": "Plan and visualize EVE Online routes, jump ranges, temporary missions, and permission-gated Saved Marker reads and creates in EVE Static Map Planner.",
+    "shortDescription": "Ask naturally about EVE systems and routes",
+    "longDescription": "Use natural language to find EVE systems and safely plan, inspect, or visualize routes, jump ranges, temporary Missions, and permission-gated Saved Markers in EVE Static Map Planner.",
     "developerName": "EVE Static Map Planner",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],
     "defaultPrompt": [
-      "Calculate an EVE route without displaying it.",
-      "Create and fit a temporary EVE map mission.",
-      "Show a capital route with mission markers."
+      "Where is Jita?",
+      "How do I get from Jita to Amarr?",
+      "Mark 1DQ1-A as dangerous on the map."
     ]
   }
 }

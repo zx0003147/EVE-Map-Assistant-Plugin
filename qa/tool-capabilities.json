@@ -1,0 +1,248 @@
+{
+  "catalogSource": "Live eve-static-map MCP catalog audited 2026-08-30",
+  "expectedToolCount": 22,
+  "tools": [
+    {
+      "name": "search_system",
+      "purpose": "Search systems and resolve canonical IDs from names, abbreviations, or numeric text.",
+      "access": "READ",
+      "inputSchema": "query: string",
+      "sideEffects": "None.",
+      "expectedResult": "systems[] candidates with canonical identity and safe summary fields.",
+      "whenToUse": "Once for each distinct unresolved user-supplied system reference.",
+      "preconditions": [],
+      "commonSequence": ["search_system", "optional follow-up read or write tool"]
+    },
+    {
+      "name": "get_system_info",
+      "purpose": "Read static details for one canonical system.",
+      "access": "READ",
+      "inputSchema": "systemId: number",
+      "sideEffects": "None.",
+      "expectedResult": "system, region, constellation, stargate count, and 3D coordinates.",
+      "whenToUse": "When details beyond lookup results are requested.",
+      "preconditions": ["Canonical systemId resolved by MCP in the conversation."],
+      "commonSequence": ["search_system", "get_system_info"]
+    },
+    {
+      "name": "get_system_markers",
+      "purpose": "Read the Saved Marker and current Mission Markers for a system.",
+      "access": "READ",
+      "inputSchema": "systemId: number",
+      "sideEffects": "None; Saved Marker read is permission-gated.",
+      "expectedResult": "savedMarker and missionMarkers for the system.",
+      "whenToUse": "When the user asks whether or how a system is marked.",
+      "preconditions": ["Canonical systemId resolved.", "Saved Marker Access enabled to read savedMarker."],
+      "commonSequence": ["search_system", "get_system_markers"]
+    },
+    {
+      "name": "calculate_normal_route",
+      "purpose": "Calculate a query-only normal route with optional Ansiblex edges.",
+      "access": "READ",
+      "inputSchema": "startSystemId: number; destinationSystemId: number; useAnsiblex: boolean",
+      "sideEffects": "None; does not display a route.",
+      "expectedResult": "systemIds, total jumps, stargate jumps, and Ansiblex jumps.",
+      "whenToUse": "For normal route answers that do not ask to change the map.",
+      "preconditions": ["Both canonical system IDs resolved."],
+      "commonSequence": ["search both endpoints", "calculate_normal_route"]
+    },
+    {
+      "name": "calculate_capital_route",
+      "purpose": "Calculate a query-only capital route for an effective range.",
+      "access": "READ",
+      "inputSchema": "startSystemId: number; destinationSystemId: number; effectiveRangeLy: number",
+      "sideEffects": "None; does not display a route.",
+      "expectedResult": "systemIds, legs, total jumps, and total distance in LY.",
+      "whenToUse": "For explicit capital or jump-route queries that do not ask for display.",
+      "preconditions": ["Both canonical system IDs resolved.", "User supplied effectiveRangeLy."],
+      "commonSequence": ["search both endpoints", "calculate_capital_route"]
+    },
+    {
+      "name": "get_active_missions",
+      "purpose": "List temporary AI Missions in the current session.",
+      "access": "READ",
+      "inputSchema": "no inputs",
+      "sideEffects": "None.",
+      "expectedResult": "missions[] summaries.",
+      "whenToUse": "To inspect current AI-owned map state or resolve a Mission follow-up.",
+      "preconditions": [],
+      "commonSequence": ["get_active_missions", "optional get_mission"]
+    },
+    {
+      "name": "get_mission",
+      "purpose": "Read one Mission and its routes, jump ranges, and markers.",
+      "access": "READ",
+      "inputSchema": "missionId: string",
+      "sideEffects": "None.",
+      "expectedResult": "Mission title, revision, routes, jumpRanges, markers, and referenced systems.",
+      "whenToUse": "To answer Mission-state questions or obtain opaque IDs before narrow edits.",
+      "preconditions": ["Known missionId, normally from begin_mission or get_active_missions."],
+      "commonSequence": ["get_active_missions when needed", "get_mission"]
+    },
+    {
+      "name": "begin_mission",
+      "purpose": "Create temporary AI-owned visual state.",
+      "access": "WRITE",
+      "inputSchema": "title: string",
+      "sideEffects": "Creates a session-only Mission.",
+      "expectedResult": "missionId, title, and revision.",
+      "whenToUse": "Before displaying a new route, jump range, or temporary marker that should persist on the map.",
+      "preconditions": ["Explicit user intent to change map state."],
+      "commonSequence": ["begin_mission", "one or more Mission write tools"]
+    },
+    {
+      "name": "focus_system",
+      "purpose": "Center the shared viewport on one system.",
+      "access": "WRITE",
+      "inputSchema": "systemId: number",
+      "sideEffects": "Changes shared map viewport focus.",
+      "expectedResult": "Focused system identity and safe summary fields.",
+      "whenToUse": "Only when the user explicitly asks to focus, center, locate, or show a system on the map.",
+      "preconditions": ["Canonical systemId resolved.", "Explicit focus intent."],
+      "commonSequence": ["search_system", "focus_system"]
+    },
+    {
+      "name": "show_normal_route",
+      "purpose": "Calculate and display a Mission-owned normal route.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; startSystemId: number; destinationSystemId: number; useAnsiblex: boolean",
+      "sideEffects": "Adds a normal route to a temporary Mission.",
+      "expectedResult": "missionId, routeId, type, and route.",
+      "whenToUse": "When the user explicitly asks to show or draw a normal route.",
+      "preconditions": ["Active missionId.", "Both canonical system IDs resolved."],
+      "commonSequence": ["search both endpoints", "begin_mission when needed", "show_normal_route"]
+    },
+    {
+      "name": "show_capital_route",
+      "purpose": "Calculate and display a Mission-owned capital route.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; startSystemId: number; destinationSystemId: number; effectiveRangeLy: number",
+      "sideEffects": "Adds a capital route to a temporary Mission.",
+      "expectedResult": "missionId, routeId, type, and route.",
+      "whenToUse": "When the user explicitly asks to show an explicit-range capital route.",
+      "preconditions": ["Active missionId.", "Both canonical system IDs resolved.", "User supplied effectiveRangeLy."],
+      "commonSequence": ["search both endpoints", "begin_mission when needed", "show_capital_route"]
+    },
+    {
+      "name": "remove_mission_route",
+      "purpose": "Remove one Mission-owned route by opaque ID.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; routeId: string",
+      "sideEffects": "Removes exactly one temporary Mission route.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "For an explicit request to remove one known Mission route.",
+      "preconditions": ["Target Mission inspected when routeId is not already known."],
+      "commonSequence": ["get_mission when needed", "remove_mission_route"]
+    },
+    {
+      "name": "clear_mission_routes",
+      "purpose": "Clear every route in one Mission.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string",
+      "sideEffects": "Removes all routes in the specified Mission only.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "Only when the user asks to clear all routes in one Mission.",
+      "preconditions": ["Target missionId identified."],
+      "commonSequence": ["get_active_missions/get_mission when needed", "clear_mission_routes"]
+    },
+    {
+      "name": "show_jump_range",
+      "purpose": "Display a Mission-owned jump-range overlay.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; originSystemId: number; effectiveRangeLy: number; label?: string",
+      "sideEffects": "Adds a temporary jump-range overlay.",
+      "expectedResult": "missionId, overlayId, origin, range, and reachable-system count.",
+      "whenToUse": "When the user explicitly asks to display an effective jump range.",
+      "preconditions": ["Active missionId.", "Canonical origin system resolved.", "User supplied effectiveRangeLy."],
+      "commonSequence": ["search_system", "begin_mission when needed", "show_jump_range"]
+    },
+    {
+      "name": "remove_jump_range",
+      "purpose": "Remove one Mission-owned jump range by opaque ID.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; overlayId: string",
+      "sideEffects": "Removes exactly one temporary overlay.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "For an explicit request to remove one known Mission range.",
+      "preconditions": ["Target Mission inspected when overlayId is not already known."],
+      "commonSequence": ["get_mission when needed", "remove_jump_range"]
+    },
+    {
+      "name": "clear_mission_jump_ranges",
+      "purpose": "Clear every jump range in one Mission.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string",
+      "sideEffects": "Removes all overlays in the specified Mission only.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "Only when the user asks to clear all ranges in one Mission.",
+      "preconditions": ["Target missionId identified."],
+      "commonSequence": ["get_active_missions/get_mission when needed", "clear_mission_jump_ranges"]
+    },
+    {
+      "name": "add_mission_marker",
+      "purpose": "Add a temporary Mission marker to one system.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; systemId: number; role: RALLY|DESTINATION|DANGER|BACKUP|WAYPOINT|INFO; label?: string; notes?: string; colorOverride?: RED|ORANGE|YELLOW|GREEN|BLUE|PURPLE|WHITE",
+      "sideEffects": "Adds a session-only marker.",
+      "expectedResult": "missionId, markerId, systemId, and role.",
+      "whenToUse": "For ordinary marker requests without explicit permanent-storage intent.",
+      "preconditions": ["Active missionId.", "Canonical systemId resolved."],
+      "commonSequence": ["search_system", "begin_mission when needed", "add_mission_marker"]
+    },
+    {
+      "name": "remove_mission_marker",
+      "purpose": "Remove one Mission-owned marker by opaque ID.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; markerId: string",
+      "sideEffects": "Removes exactly one temporary Mission marker; never a Saved Marker.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "For an explicit request to remove one known Mission marker.",
+      "preconditions": ["Target Mission inspected when markerId is not already known."],
+      "commonSequence": ["get_mission when needed", "remove_mission_marker"]
+    },
+    {
+      "name": "clear_mission_markers",
+      "purpose": "Clear every marker in one Mission.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string",
+      "sideEffects": "Removes all temporary markers in the specified Mission only.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "Only when the user asks to clear all markers in one Mission.",
+      "preconditions": ["Target missionId identified."],
+      "commonSequence": ["get_active_missions/get_mission when needed", "clear_mission_markers"]
+    },
+    {
+      "name": "fit_mission",
+      "purpose": "Fit the viewport to one Mission's visual bounds.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string",
+      "sideEffects": "Changes shared map viewport framing.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "Only when the user asks to fit or show the whole Mission.",
+      "preconditions": ["Target missionId identified."],
+      "commonSequence": ["Mission visuals created or selected", "fit_mission"]
+    },
+    {
+      "name": "clear_mission",
+      "purpose": "Remove one entire temporary Mission.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string",
+      "sideEffects": "Removes the specified Mission and all its AI-owned visuals only.",
+      "expectedResult": "missionId confirmation.",
+      "whenToUse": "Only for an explicit whole-Mission removal request.",
+      "preconditions": ["Target missionId identified."],
+      "commonSequence": ["get_active_missions/get_mission when needed", "clear_mission"]
+    },
+    {
+      "name": "create_saved_marker",
+      "purpose": "Create one persistent Saved Marker with optional initial tags.",
+      "access": "WRITE",
+      "inputSchema": "systemId: number; color: RED|ORANGE|YELLOW|GREEN|BLUE|PURPLE|WHITE; name?: string; notes?: string; tags?: [STAGING|RALLY|DANGER|LOGISTICS|HOME|BACKUP|INDUSTRIAL|STRATEGIC|KEEPSTAR]",
+      "sideEffects": "Creates one persistent marker; create-only and never overwrites existing state.",
+      "expectedResult": "Created marker.",
+      "whenToUse": "Only after explicit permanent-storage or Saved Marker intent.",
+      "preconditions": ["Canonical systemId resolved.", "Saved Marker Access enabled.", "Explicit persistence intent."],
+      "commonSequence": ["search_system", "create_saved_marker"]
+    }
+  ]
+}

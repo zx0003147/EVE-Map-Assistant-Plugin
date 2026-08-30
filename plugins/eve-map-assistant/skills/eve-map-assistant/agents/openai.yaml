@@ -1,7 +1,7 @@
 interface:
   display_name: "EVE Map Assistant"
-  short_description: "Plan EVE routes and authorized map markers"
-  default_prompt: "Use $eve-map-assistant to plan a route or safely mark an EVE system."
+  short_description: "Find systems and safely plan or inspect EVE routes"
+  default_prompt: "Use $eve-map-assistant to find Jita or plan an EVE route in natural language."
 
 dependencies:
   tools:

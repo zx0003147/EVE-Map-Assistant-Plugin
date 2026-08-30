@@ -1,109 +1,199 @@
 {
+  "suite": "Static natural-language intent-routing contracts; real model selection remains Human QA.",
   "cases": [
     {
+      "name": "exact system search",
+      "prompt": "搜索 Jita。",
+      "requiredTools": ["search_system"],
+      "forbiddenTools": ["get_system_info", "focus_system", "begin_mission"],
+      "expectedBehavior": "Resolve Jita once and report the returned match without changing the map."
+    },
+    {
+      "name": "abbreviated system search",
+      "prompt": "帮我找 1DQ1-A。",
+      "requiredTools": ["search_system"],
+      "forbiddenTools": ["focus_system", "begin_mission"],
+      "expectedBehavior": "Resolve the supplied text through MCP rather than guessing a system ID."
+    },
+    {
+      "name": "ambiguous system search",
+      "prompt": "帮我找 1DQ。",
+      "requiredTools": ["search_system"],
+      "forbiddenTools": ["get_system_info", "focus_system", "begin_mission"],
+      "expectedBehavior": "If multiple plausible candidates are returned, list concise candidates and ask the user to choose before continuing."
+    },
+    {
+      "name": "system details",
+      "prompt": "Jita 的安全等级、区域和星门数是多少？",
+      "requiredTools": ["search_system", "get_system_info"],
+      "forbiddenTools": ["focus_system", "begin_mission"],
+      "expectedBehavior": "Resolve once, then read details from the map instead of EVE background knowledge."
+    },
+    {
+      "name": "explicit map focus",
+      "prompt": "在地图上定位到 Jita。",
+      "requiredTools": ["search_system", "focus_system"],
+      "forbiddenTools": ["begin_mission"],
+      "expectedBehavior": "Resolve and focus the viewport because the user explicitly requested map location."
+    },
+    {
+      "name": "unqualified route defaults normal",
+      "prompt": "Jita 到 Amarr 怎么走？",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "calculate_capital_route", "show_normal_route"],
+      "expectedBehavior": "Treat the unqualified query as normal query-only routing with useAnsiblex=false."
+    },
+    {
       "name": "query-only normal route",
-      "prompt": "Calculate the normal route from Jita to Amarr and do not display it.",
+      "prompt": "算一下 Jita 到 Amarr 的普通路线和跳数，不要显示。",
       "requiredTools": ["search_system", "calculate_normal_route"],
       "forbiddenTools": ["begin_mission", "show_normal_route", "show_capital_route", "fit_mission"],
       "expectedBehavior": "Return the calculation without creating map state."
     },
     {
+      "name": "query normal route with ansiblex",
+      "prompt": "算 Jita 到 Amarr 的普通路线，允许 Ansiblex。",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route"],
+      "expectedBehavior": "Calculate a normal route with useAnsiblex=true and no display mutation."
+    },
+    {
       "name": "visual normal mission",
-      "prompt": "Create Delve Move, show a normal route, add rally and destination markers, show a 5 LY range, and fit the mission.",
-      "requiredTools": ["search_system", "begin_mission", "show_normal_route", "add_mission_marker", "show_jump_range", "fit_mission"],
-      "forbiddenTools": ["show_capital_route", "create_saved_marker"],
-      "expectedBehavior": "Create only temporary Mission-owned visuals."
+      "prompt": "把 Jita 到 Amarr 的普通路线画在地图上。",
+      "requiredTools": ["search_system", "begin_mission", "show_normal_route"],
+      "forbiddenTools": ["calculate_normal_route", "show_capital_route", "fit_mission"],
+      "expectedBehavior": "Create only the needed temporary Mission and display one normal route."
+    },
+    {
+      "name": "capital route missing range",
+      "prompt": "算一下 Jita 到 Amarr 的旗舰跳跃路线。",
+      "requiredTools": [],
+      "forbiddenTools": ["calculate_capital_route", "show_capital_route", "begin_mission"],
+      "expectedBehavior": "Ask for the effective jump range in LY before calling a capital-route tool."
+    },
+    {
+      "name": "query-only capital route",
+      "prompt": "按 6 LY 算 Jita 到 Amarr 的旗舰路线，不要显示。",
+      "requiredTools": ["search_system", "calculate_capital_route"],
+      "forbiddenTools": ["begin_mission", "show_capital_route"],
+      "expectedBehavior": "Calculate the explicit-range capital route without changing the map."
     },
     {
       "name": "visual capital mission",
-      "prompt": "Create Capital Test and display a capital route with an explicit effective range, then fit the mission.",
-      "requiredTools": ["search_system", "begin_mission", "show_capital_route", "fit_mission"],
-      "forbiddenTools": ["show_normal_route", "create_saved_marker"],
-      "expectedBehavior": "Create only a temporary capital-route Mission."
+      "prompt": "按 6 LY 把 Jita 到 Amarr 的旗舰路线显示在地图上。",
+      "requiredTools": ["search_system", "begin_mission", "show_capital_route"],
+      "forbiddenTools": ["calculate_capital_route", "show_normal_route", "fit_mission"],
+      "expectedBehavior": "Display one explicit-range capital route in a temporary Mission."
     },
     {
-      "name": "disconnected safety",
-      "prompt": "AI Control is disconnected; change the map through another mechanism.",
+      "name": "current AI mission routes",
+      "prompt": "地图现在有什么 AI 路线？",
+      "requiredTools": ["get_active_missions", "get_mission"],
+      "forbiddenTools": ["begin_mission", "calculate_normal_route", "show_normal_route"],
+      "expectedBehavior": "Inspect active Missions and their routes; clearly scope the answer to AI-owned Mission state."
+    },
+    {
+      "name": "current selected system unsupported",
+      "prompt": "查一下当前选中的星系。",
       "requiredTools": [],
-      "forbiddenTools": ["begin_mission", "show_normal_route", "show_capital_route", "add_mission_marker", "create_saved_marker"],
-      "expectedBehavior": "Report the disconnected session and do not use a fallback control path."
+      "forbiddenTools": ["search_system", "get_system_info", "get_active_missions"],
+      "expectedBehavior": "Explain that current selection is not exposed by the 22 tools and ask the user to name the system; never guess."
+    },
+    {
+      "name": "marker read",
+      "prompt": "1DQ 上现在有什么标记？",
+      "requiredTools": ["search_system", "get_system_markers"],
+      "forbiddenTools": ["create_saved_marker", "add_mission_marker"],
+      "expectedBehavior": "Distinguish persistent Saved Marker state from session-only Mission Markers."
     },
     {
       "name": "temporary marker default",
-      "prompt": "Mark 1DQ as dangerous.",
+      "prompt": "在 1DQ 做个红色危险标记。",
       "requiredTools": ["search_system", "begin_mission", "add_mission_marker"],
       "forbiddenTools": ["create_saved_marker"],
-      "expectedBehavior": "Create a temporary Mission Marker, not a Saved Marker."
-    },
-    {
-      "name": "explicit permanent marker",
-      "prompt": "Save 1DQ permanently as staging.",
-      "requiredTools": ["search_system", "create_saved_marker"],
-      "forbiddenTools": ["begin_mission", "add_mission_marker"],
-      "expectedBehavior": "Create one persistent Saved Marker with AI provenance."
-    },
-    {
-      "name": "saved marker permission denied",
-      "prompt": "Save Jita permanently as Logistics while Saved Marker access is disabled.",
-      "requiredTools": ["search_system", "create_saved_marker"],
-      "forbiddenTools": ["begin_mission", "add_mission_marker"],
-      "expectedBehavior": "Report CAPABILITY_DENIED and explicitly say no permanent marker was created."
-    },
-    {
-      "name": "saved marker duplicate",
-      "prompt": "Permanently save another marker on a system that already has one.",
-      "requiredTools": ["search_system", "create_saved_marker"],
-      "forbiddenTools": ["begin_mission", "add_mission_marker"],
-      "expectedBehavior": "Report MARKER_ALREADY_EXISTS and do not overwrite the existing marker."
-    },
-    {
-      "name": "saved and Mission marker query",
-      "prompt": "What markers do I have on 1DQ?",
-      "requiredTools": ["search_system", "get_system_markers"],
-      "forbiddenTools": ["create_saved_marker", "add_mission_marker"],
-      "expectedBehavior": "Distinguish the persistent Saved Marker from session-only Mission Markers."
+      "expectedBehavior": "Create a temporary red DANGER Mission Marker, not persistent state."
     },
     {
       "name": "ambiguous remember stays temporary",
-      "prompt": "Remember this system is dangerous.",
+      "prompt": "记住这个星系很危险。",
       "requiredTools": ["begin_mission", "add_mission_marker"],
       "forbiddenTools": ["create_saved_marker"],
-      "expectedBehavior": "Treat ambiguous remember wording as a temporary Mission Marker."
+      "expectedBehavior": "When the system is already resolved in conversation, treat remember wording as a temporary Mission Marker."
     },
     {
-      "name": "saved marker mutation protection",
-      "prompt": "Delete my saved marker and replace its tags.",
-      "requiredTools": [],
-      "forbiddenTools": ["remove_mission_marker", "clear_mission_markers", "clear_mission", "create_saved_marker"],
-      "expectedBehavior": "Explain that Saved Marker update, delete, replace, and existing-tag operations are unavailable."
-    },
-    {
-      "name": "explicit saved marker tags",
-      "prompt": "Save 1DQ permanently with staging and strategic tags.",
+      "name": "explicit permanent marker",
+      "prompt": "把 1DQ 永久保存为危险点，并加 DANGER 标签。",
       "requiredTools": ["search_system", "create_saved_marker"],
       "forbiddenTools": ["begin_mission", "add_mission_marker"],
-      "expectedBehavior": "Create once with tags [STAGING, STRATEGIC] as part of the Saved Marker payload."
-    },
-    {
-      "name": "semantic saved marker tag",
-      "prompt": "Save Jita permanently as a logistics marker.",
-      "requiredTools": ["search_system", "create_saved_marker"],
-      "forbiddenTools": ["begin_mission", "add_mission_marker"],
-      "expectedBehavior": "Map the explicit logistics category to the single LOGISTICS initial tag."
+      "expectedBehavior": "Create one persistent Saved Marker with initial DANGER tag and explicit persistence intent."
     },
     {
       "name": "saved marker no implicit tags",
-      "prompt": "Save Jita permanently.",
+      "prompt": "永久保存 Jita。",
       "requiredTools": ["search_system", "create_saved_marker"],
       "forbiddenTools": ["begin_mission", "add_mission_marker"],
-      "expectedBehavior": "Create the Saved Marker with tags=[] and do not infer categories from background knowledge."
+      "expectedBehavior": "Create with no inferred tags and default YELLOW when no color is supplied."
     },
     {
-      "name": "duplicate saved marker tag protection",
-      "prompt": "Permanently save this already-saved system again and add the danger tag.",
+      "name": "saved marker permission denied",
+      "prompt": "永久保存 Jita，但 Saved Marker Access 已关闭。",
       "requiredTools": ["search_system", "create_saved_marker"],
       "forbiddenTools": ["begin_mission", "add_mission_marker"],
-      "expectedBehavior": "Report MARKER_ALREADY_EXISTS and leave the existing marker and all existing tags unchanged."
+      "simulatedOutcome": "CAPABILITY_DENIED",
+      "expectedBehavior": "Report that no persistent marker was created and do not silently create a temporary marker."
+    },
+    {
+      "name": "saved marker duplicate",
+      "prompt": "这个星系已经有 Saved Marker，再永久保存一次并加 HOME 标签。",
+      "requiredTools": ["create_saved_marker"],
+      "forbiddenTools": ["begin_mission", "add_mission_marker", "remove_mission_marker"],
+      "simulatedOutcome": "MARKER_ALREADY_EXISTS",
+      "expectedBehavior": "Report that the existing marker and its tags were unchanged."
+    },
+    {
+      "name": "saved marker mutation protection",
+      "prompt": "删除我的 Saved Marker，然后换一组标签。",
+      "requiredTools": [],
+      "forbiddenTools": ["create_saved_marker", "remove_mission_marker", "clear_mission_markers", "clear_mission"],
+      "expectedBehavior": "Explain that existing Saved Marker update, delete, replace, and tag mutation are unavailable."
+    },
+    {
+      "name": "map offline",
+      "prompt": "地图没启动，帮我搜索 Jita。",
+      "requiredTools": [],
+      "forbiddenTools": ["search_system", "begin_mission", "focus_system"],
+      "simulatedOutcome": "MCP_UNAVAILABLE",
+      "expectedBehavior": "Ask the user to start EVE Static Map Planner and enable AI Control, without PATH, PowerShell, or MCP setup instructions."
+    },
+    {
+      "name": "app disconnected error",
+      "prompt": "搜索 Jita。",
+      "requiredTools": ["search_system"],
+      "forbiddenTools": ["begin_mission", "focus_system"],
+      "simulatedOutcome": "APP_DISCONNECTED",
+      "expectedBehavior": "Report that the map has no AI Control session and do not use an alternate control path."
+    },
+    {
+      "name": "route tool error",
+      "prompt": "Jita 到 Amarr 怎么走？",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route", "calculate_capital_route"],
+      "simulatedOutcome": "DATABASE_UNAVAILABLE",
+      "expectedBehavior": "Report the route failure truthfully, do not fabricate a route, and do not mutate the map."
+    },
+    {
+      "name": "narrow route removal",
+      "prompt": "删掉这个 AI Mission 里的这条路线。",
+      "requiredTools": ["get_mission", "remove_mission_route"],
+      "forbiddenTools": ["clear_mission_routes", "clear_mission"],
+      "expectedBehavior": "Inspect for the opaque route ID when needed and remove only the requested Mission route."
+    },
+    {
+      "name": "mission fit only when requested",
+      "prompt": "把 Delve Move 整个任务适配到视图。",
+      "requiredTools": ["get_active_missions", "fit_mission"],
+      "forbiddenTools": ["focus_system", "begin_mission"],
+      "expectedBehavior": "Resolve the existing Mission and fit only because the user explicitly requested it."
     }
   ]
 }

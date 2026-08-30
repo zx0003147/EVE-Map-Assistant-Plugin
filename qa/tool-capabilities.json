@@ -1,6 +1,6 @@
 {
   "catalogSource": "Live eve-static-map MCP catalog audited 2026-08-30",
-  "expectedToolCount": 22,
+  "expectedToolCount": 28,
   "tools": [
     {
       "name": "search_system",
@@ -58,12 +58,78 @@
       "commonSequence": ["search both endpoints", "calculate_capital_route"]
     },
     {
-      "name": "get_active_missions",
-      "purpose": "List temporary AI Missions in the current session.",
+      "name": "list_views",
+      "purpose": "List all planning Views with stable IDs, editable labels, and current status.",
       "access": "READ",
       "inputSchema": "no inputs",
       "sideEffects": "None.",
-      "expectedResult": "missions[] summaries.",
+      "expectedResult": "views[] with viewId, label, and current.",
+      "whenToUse": "Resolve a user-named View or inspect all Views.",
+      "preconditions": [],
+      "commonSequence": ["list_views", "View-aware read or write tool"]
+    },
+    {
+      "name": "get_current_view",
+      "purpose": "Read the View currently displayed by the map.",
+      "access": "READ",
+      "inputSchema": "no inputs",
+      "sideEffects": "None.",
+      "expectedResult": "viewId, label, and current=true.",
+      "whenToUse": "When the current View identity is part of the answer.",
+      "preconditions": [],
+      "commonSequence": ["get_current_view"]
+    },
+    {
+      "name": "create_view",
+      "purpose": "Create and switch to a new planning View.",
+      "access": "WRITE",
+      "inputSchema": "label?: string",
+      "sideEffects": "Creates a View and makes it current.",
+      "expectedResult": "New viewId, unique label, and current=true.",
+      "whenToUse": "Only when the user asks to create a View.",
+      "preconditions": ["Explicit create intent.", "Requested label is unique when supplied."],
+      "commonSequence": ["list_views when label collision is possible", "create_view"]
+    },
+    {
+      "name": "rename_view",
+      "purpose": "Rename a planning View by stable ID.",
+      "access": "WRITE",
+      "inputSchema": "viewId: string; label: string",
+      "sideEffects": "Changes the editable View label.",
+      "expectedResult": "viewId, new unique label, and current status.",
+      "whenToUse": "Only when the user asks to rename a View.",
+      "preconditions": ["View resolved with list_views.", "New label is unique."],
+      "commonSequence": ["list_views", "rename_view"]
+    },
+    {
+      "name": "switch_view",
+      "purpose": "Switch the map to a planning View by stable ID.",
+      "access": "WRITE",
+      "inputSchema": "viewId: string",
+      "sideEffects": "Changes the currently displayed View and its visible planning state.",
+      "expectedResult": "Selected viewId, label, and current=true.",
+      "whenToUse": "Only when the user asks to display or switch to a View.",
+      "preconditions": ["View resolved with list_views."],
+      "commonSequence": ["list_views", "switch_view"]
+    },
+    {
+      "name": "delete_view",
+      "purpose": "Delete a planning View by stable ID.",
+      "access": "WRITE",
+      "inputSchema": "viewId: string",
+      "sideEffects": "Deletes the View and its AI Missions; never logs out ESI characters.",
+      "expectedResult": "The current View after deletion.",
+      "whenToUse": "Only for an explicit request to delete a resolved View.",
+      "preconditions": ["View resolved with list_views.", "At least one other View remains."],
+      "commonSequence": ["list_views", "delete_view"]
+    },
+    {
+      "name": "get_active_missions",
+      "purpose": "List temporary AI Missions in the current session.",
+      "access": "READ",
+      "inputSchema": "viewId?: string",
+      "sideEffects": "None.",
+      "expectedResult": "missions[] summaries for the requested or current View.",
       "whenToUse": "To inspect current AI-owned map state or resolve a Mission follow-up.",
       "preconditions": [],
       "commonSequence": ["get_active_missions", "optional get_mission"]
@@ -83,9 +149,9 @@
       "name": "begin_mission",
       "purpose": "Create temporary AI-owned visual state.",
       "access": "WRITE",
-      "inputSchema": "title: string",
-      "sideEffects": "Creates a session-only Mission.",
-      "expectedResult": "missionId, title, and revision.",
+      "inputSchema": "title: string; viewId?: string",
+      "sideEffects": "Creates a persistent AI Mission in the requested or current View.",
+      "expectedResult": "missionId, title, revision, and owning viewId.",
       "whenToUse": "Before displaying a new route, jump range, or temporary marker that should persist on the map.",
       "preconditions": ["Explicit user intent to change map state."],
       "commonSequence": ["begin_mission", "one or more Mission write tools"]

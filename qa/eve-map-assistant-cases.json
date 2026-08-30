@@ -97,7 +97,7 @@
       "prompt": "查一下当前选中的星系。",
       "requiredTools": [],
       "forbiddenTools": ["search_system", "get_system_info", "get_active_missions"],
-      "expectedBehavior": "Explain that current selection is not exposed by the 22 tools and ask the user to name the system; never guess."
+      "expectedBehavior": "Explain that current selection is not exposed by the available tools and ask the user to name the system; never guess."
     },
     {
       "name": "marker read",
@@ -194,6 +194,48 @@
       "requiredTools": ["get_active_missions", "fit_mission"],
       "forbiddenTools": ["focus_system", "begin_mission"],
       "expectedBehavior": "Resolve the existing Mission and fit only because the user explicitly requested it."
+    },
+    {
+      "name": "list all views",
+      "prompt": "我现在有哪些 View？",
+      "requiredTools": ["list_views"],
+      "forbiddenTools": ["get_current_view", "switch_view", "create_view"],
+      "expectedBehavior": "List labels and stable identities without changing the current View."
+    },
+    {
+      "name": "current view",
+      "prompt": "地图当前显示哪个 View？",
+      "requiredTools": ["get_current_view"],
+      "forbiddenTools": ["list_views", "switch_view"],
+      "expectedBehavior": "Read and report the current View without changing it."
+    },
+    {
+      "name": "named view mission",
+      "prompt": "在 Scout View 里把 Jita 到 Amarr 画出来。",
+      "requiredTools": ["list_views", "search_system", "begin_mission", "show_normal_route"],
+      "forbiddenTools": ["switch_view", "calculate_normal_route"],
+      "expectedBehavior": "Resolve Scout by unique label, pass its stable viewId to begin_mission, and do not switch the UI."
+    },
+    {
+      "name": "create unique view",
+      "prompt": "新建一个叫 Scout 的 View。",
+      "requiredTools": ["create_view"],
+      "forbiddenTools": ["switch_view", "rename_view"],
+      "expectedBehavior": "Create the explicitly requested View; report a duplicate-label error without inventing a different name."
+    },
+    {
+      "name": "rename named view",
+      "prompt": "把 Scout View 改名成 Forward Scout。",
+      "requiredTools": ["list_views", "rename_view"],
+      "forbiddenTools": ["switch_view", "delete_view"],
+      "expectedBehavior": "Resolve the old label, then rename by stable viewId while preserving View identity."
+    },
+    {
+      "name": "delete named view",
+      "prompt": "删除 Forward Scout View。",
+      "requiredTools": ["list_views", "delete_view"],
+      "forbiddenTools": ["switch_view", "clear_mission"],
+      "expectedBehavior": "Resolve and delete only that View, respecting the last-View protection."
     }
   ]
 }

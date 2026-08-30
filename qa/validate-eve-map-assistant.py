@@ -15,6 +15,12 @@ EXPECTED_TOOLS = [
     "get_system_markers",
     "calculate_normal_route",
     "calculate_capital_route",
+    "list_views",
+    "get_current_view",
+    "create_view",
+    "rename_view",
+    "switch_view",
+    "delete_view",
     "get_active_missions",
     "get_mission",
     "begin_mission",
@@ -40,6 +46,8 @@ READ_TOOLS = {
     "get_system_markers",
     "calculate_normal_route",
     "calculate_capital_route",
+    "list_views",
+    "get_current_view",
     "get_active_missions",
     "get_mission",
 }
@@ -128,7 +136,7 @@ def main() -> int:
     require('value: "eve-static-map"' in openai_yaml, "Skill must declare its MCP dependency")
     require("$eve-map-assistant" in openai_yaml, "Default prompt must name the skill")
     require("allow_implicit_invocation: true" in openai_yaml, "Natural-language implicit invocation must remain enabled")
-    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md must contain exactly the canonical 22 tools")
+    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md must contain exactly the canonical 28 tools")
 
     lowered_skill = skill.lower()
     for required_rule in [
@@ -143,6 +151,9 @@ def main() -> int:
         "never update, overwrite, replace, delete, clear, add children to, or change tags",
         "app_disconnected",
         "do not try another control path",
+        "view labels are editable and unique",
+        "never send a label where a `viewid` is required",
+        "omit `viewid`",
     ]:
         require(required_rule in lowered_skill, f"SKILL.md is missing decision rule: {required_rule}")
 
@@ -155,17 +166,17 @@ def main() -> int:
     require(re.search(r"(?i)[a-z]:[\\/]+users[\\/]+[^<%$\\/\s]+", artifact_text) is None, "Artifacts contain a concrete user path")
     require(re.search(r"\b30\d{6}\b", skill) is None, "SKILL.md must not hard-code EVE system IDs")
 
-    require(capabilities_document["expectedToolCount"] == 22, "Capability fixture count changed")
+    require(capabilities_document["expectedToolCount"] == 28, "Capability fixture count changed")
     capabilities = capabilities_document["tools"]
     require([tool["name"] for tool in capabilities] == EXPECTED_TOOLS, "Capability fixture must follow the canonical tool order")
-    require(len(capabilities) == 22, "Capability fixture must contain exactly 22 tools")
+    require(len(capabilities) == 28, "Capability fixture must contain exactly 28 tools")
     for tool in capabilities:
         expected_access = "READ" if tool["name"] in READ_TOOLS else "WRITE"
         require(tool["access"] == expected_access, f"Wrong access class for {tool['name']}")
         for field in ["purpose", "inputSchema", "sideEffects", "expectedResult", "whenToUse", "preconditions", "commonSequence"]:
             require(field in tool and tool[field] not in (None, ""), f"{tool['name']} is missing {field}")
-    require(sum(tool["access"] == "READ" for tool in capabilities) == 7, "Expected seven read tools")
-    require(sum(tool["access"] == "WRITE" for tool in capabilities) == 15, "Expected fifteen write tools")
+    require(sum(tool["access"] == "READ" for tool in capabilities) == 9, "Expected nine read tools")
+    require(sum(tool["access"] == "WRITE" for tool in capabilities) == 19, "Expected nineteen write tools")
 
     require("real model selection remains Human QA" in cases_document["suite"], "Scenario suite must not claim model-choice automation")
     cases = cases_document["cases"]
@@ -190,7 +201,7 @@ def main() -> int:
     ]:
         require(phrase in readme, f"README is missing simple user step: {phrase}")
 
-    print("EVE Map Assistant repository validation passed (22 tools: 7 read / 15 write; 27 behavior contracts; Plugin 0.5.0).")
+    print(f"EVE Map Assistant repository validation passed (28 tools: 9 read / 19 write; {len(cases)} behavior contracts; Plugin 0.5.0).")
     return 0
 
 

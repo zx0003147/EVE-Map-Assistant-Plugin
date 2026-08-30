@@ -17,6 +17,12 @@ get_system_info
 get_system_markers
 calculate_normal_route
 calculate_capital_route
+list_views
+get_current_view
+create_view
+rename_view
+switch_view
+delete_view
 get_active_missions
 get_mission
 begin_mission
@@ -36,9 +42,20 @@ clear_mission
 create_saved_marker
 ```
 
-Do not invent tools. Read tools are `search_system`, `get_system_info`, `get_system_markers`, both `calculate_*_route` tools, `get_active_missions`, and `get_mission`. All others change map or marker state.
+Do not invent tools. Read tools are `search_system`, `get_system_info`, `get_system_markers`, both `calculate_*_route` tools, `list_views`, `get_current_view`, `get_active_missions`, and `get_mission`. All others change map or marker state.
 
-A Mission is temporary, session-only, AI-owned visual state. Mission tools never mutate user routes, user jump ranges, user markers, Ansiblex data, preferences, or the EVE client. Calculating or displaying a route never authorizes **Send Draft to EVE** or **Set EVE Destination**; those remain explicit manual actions in the app.
+A Mission is AI-owned visual state attached to one stable View ID and restored by the map across restarts. Mission tools never mutate user routes, user jump ranges, user markers, Ansiblex data, preferences, or the EVE client. Calculating or displaying a route never authorizes **Send Draft to EVE** or **Set EVE Destination**; those remain explicit manual actions in the app.
+
+## View resolution
+
+Every Mission belongs to exactly one View. View labels are editable and unique, while `viewId` is the stable identifier used by tools.
+
+- If the user does not name a View, omit `viewId`; the map will use the currently displayed View. Call `get_current_view` only when its identity matters to the answer.
+- If the user names a View, call `list_views`, match the label case-insensitively, and pass the returned stable `viewId`. Never send a label where a `viewId` is required.
+- If no label matches, say so or create a View only when the user asked to create one. If wording is ambiguous, ask rather than switching or deleting a View.
+- `create_view` switches to the new View. Use `switch_view`, `rename_view`, and `delete_view` only on explicit user intent. Never delete the last View.
+- A named non-current View can receive a Mission without switching the UI: resolve its ID and pass it to `begin_mission`. Do not switch merely to perform a targeted operation.
+- Mission follow-ups stay in their Mission's owning View. Use `get_active_missions` with the intended `viewId` when the user named a View; omit it for the current View.
 
 The catalog does not expose the currently selected system or user-owned route drafts. When asked for either, do not infer it from chat or Mission state. Explain the limitation; for a selected system, ask the user to name it. “What routes are on the map?” can inspect AI Missions only: call `get_active_missions`, then `get_mission` for the relevant Mission or each returned Mission when the list is small and the request covers all of them.
 
@@ -62,7 +79,7 @@ Keep calculation separate from display:
 
 ## Mission workflow
 
-Create a Mission with `begin_mission` only when requested state should remain on the map. Use the user’s title when supplied; otherwise choose a short descriptive title. Keep every route, overlay, and temporary marker under the returned `missionId`.
+Create a Mission with `begin_mission` only when requested state should remain on the map. Use the user’s title when supplied; otherwise choose a short descriptive title. Pass a resolved `viewId` for a named View and omit it for the current View. Keep every route, overlay, and temporary marker under the returned `missionId`.
 
 For follow-ups, call `get_active_missions` and then `get_mission` only as needed to identify the target and opaque object ID. If multiple Missions make “this route/marker/range” ambiguous, ask before changing state.
 
@@ -98,5 +115,8 @@ Use `get_system_markers` for marker queries and distinguish the persistent Saved
 - “Jita 到 Amarr 怎么走？” → resolve both → `calculate_normal_route`.
 - “把 Jita 到 Amarr 画在地图上” → resolve both → `begin_mission` when needed → `show_normal_route`.
 - “地图现在有什么 AI 路线？” → `get_active_missions` → relevant `get_mission` calls.
+- “Scout View 里有什么 AI 路线？” → `list_views` → `get_active_missions(viewId)` → relevant `get_mission` calls.
+- “新建一个 Scout View” → `create_view(label=Scout)`.
+- “在 Scout View 画 Jita 到 Amarr” → `list_views` → resolve both systems → `begin_mission(viewId)` → `show_normal_route`.
 - “在 1DQ 做个红色危险标记” → `search_system` → `begin_mission` when needed → `add_mission_marker`.
 - “永久保存 1DQ，并加 DANGER 标签” → `search_system` → `create_saved_marker`.

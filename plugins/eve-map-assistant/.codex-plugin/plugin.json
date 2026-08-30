@@ -1,6 +1,6 @@
 {
   "name": "eve-map-assistant",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Plan EVE Online routes, temporary missions, and permission-gated Saved Markers in EVE Static Map Planner.",
   "author": {
     "name": "EVE Static Map Planner"

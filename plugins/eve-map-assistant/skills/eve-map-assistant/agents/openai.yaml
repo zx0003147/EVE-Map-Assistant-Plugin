@@ -7,7 +7,7 @@ dependencies:
   tools:
     - type: "mcp"
       value: "eve-static-map"
-      description: "EVE Static Map Planner's Plugin-bundled local MCP integration"
+      description: "EVE Static Map Planner's Plugin-bundled localhost MCP integration"
 
 policy:
   allow_implicit_invocation: true

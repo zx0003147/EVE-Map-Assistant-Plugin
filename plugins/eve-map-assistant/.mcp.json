@@ -1,7 +1,8 @@
 {
   "mcpServers": {
     "eve-static-map": {
-      "command": "eve-map-mcp.exe"
+      "type": "http",
+      "url": "http://127.0.0.1:27892/mcp"
     }
   }
 }

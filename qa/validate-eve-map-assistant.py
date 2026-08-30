@@ -67,18 +67,16 @@ def main() -> int:
     readme = readme_path.read_text(encoding="utf-8")
 
     require(manifest["name"] == "eve-map-assistant", "Unexpected plugin name")
-    require(manifest["version"] == "0.3.0", "Phase 5 Plugin version must be 0.3.0")
+    require(manifest["version"] == "0.4.0", "Localhost HTTP Plugin version must be 0.4.0")
     require(manifest["skills"] == "./skills/", "Plugin must point to bundled skills")
     require(manifest["mcpServers"] == "./.mcp.json", "Plugin must link the bundled MCP companion file")
     require(set(mcp) == {"mcpServers"}, "Bundled MCP file must use the current mcpServers wrapper")
     require(set(mcp["mcpServers"]) == {"eve-static-map"}, "Plugin must bundle exactly eve-static-map")
     server = mcp["mcpServers"]["eve-static-map"]
-    require(server == {"command": "eve-map-mcp.exe"}, "Bundled MCP must use only the stable launcher command")
-    command = server["command"]
-    require(not Path(command).is_absolute() and ":" not in command and "/" not in command and "\\" not in command,
-            "Bundled MCP command must be a portable executable name")
-    require(not any(shell in command.lower() for shell in ["powershell", "cmd", "bash", ".bat", ".ps1"]),
-            "Bundled MCP command must not use a shell or wrapper")
+    require(server == {"type": "http", "url": "http://127.0.0.1:27892/mcp"},
+            "Bundled MCP must use only the fixed localhost Streamable HTTP endpoint")
+    require(not any(key in server for key in ["command", "args", "cwd", "env", "headers", "required"]),
+            "Bundled HTTP MCP must not add launcher, environment, credentials, or unsupported fields")
 
     entries = [entry for entry in marketplace["plugins"] if entry["name"] == manifest["name"]]
     require(marketplace["name"] == "personal", "Unexpected marketplace name")
@@ -90,7 +88,7 @@ def main() -> int:
     require(entries[0]["category"] == "Productivity", "Unexpected marketplace category")
 
     require('value: "eve-static-map"' in openai_yaml, "Skill must declare the bundled MCP dependency")
-    require("plugin-bundled local mcp integration" in openai_yaml.lower(), "Dependency description must state Gate A ownership")
+    require("plugin-bundled localhost mcp integration" in openai_yaml.lower(), "Dependency description must state Gate A ownership")
     require("transport:" not in openai_yaml and "url:" not in openai_yaml, "Dependency must not invent a transport or URL")
     require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md tool contract must contain exactly the fixed 22 tools")
 
@@ -107,8 +105,6 @@ def main() -> int:
     for forbidden in [
         "session.key",
         "bearer token",
-        "localhost:",
-        "127.0.0.1:",
         "fc ping",
         "discord parser",
         "static.db",
@@ -164,11 +160,11 @@ def main() -> int:
         require(required.isdisjoint(forbidden), f"{case['name']} requires and forbids the same tool")
         require(bool(case.get("expectedBehavior", "").strip()), f"{case['name']} is missing expected behavior")
 
-    require("EVE Static Map Planner 0.5.0 or later" in readme, "README must state the Saved Marker prerequisite")
-    require("Plugin version: `0.3.0`" in readme, "README must state the independent Plugin version")
+    require("EVE Static Map Planner 0.6.0 or later" in readme, "README must state the localhost MCP prerequisite")
+    require("Plugin version: `0.4.0`" in readme, "README must state the independent Plugin version")
     require("No `codex mcp add` command is required" in readme, "README must make Gate A the normal install path")
     require("codex mcp remove eve-static-map" in readme, "README must include the one-time Gate B migration")
-    require("fully restart Codex" in readme, "README must explain Windows process environment refresh")
+    require("open a new Codex task" in readme, "README must explain when the Plugin configuration is picked up")
     require("codex plugin marketplace add \".\"" in readme, "README must include local marketplace installation")
     require("codex plugin add eve-map-assistant@personal" in readme, "README must include the Plugin install command")
 

@@ -28,4 +28,4 @@ Open a new task after reinstalling. The Plugin uses the map application's fixed 
 - Natural-language behavior contracts: `qa/eve-map-assistant-cases.json`
 - Canonical 28-tool capability fixture: `qa/tool-capabilities.json`
 
-Plugin version: `0.5.0`. Licensed under the [MIT License](LICENSE).
+Plugin version: `0.5.1`. Licensed under the [MIT License](LICENSE).

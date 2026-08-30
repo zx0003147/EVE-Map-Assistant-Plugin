@@ -1,6 +1,6 @@
 {
   "name": "eve-map-assistant",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Find EVE systems and safely plan, inspect, or visualize routes and markers in EVE Static Map Planner.",
   "author": {
     "name": "EVE Static Map Planner"

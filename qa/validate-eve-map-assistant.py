@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repository contract checks for EVE Map Assistant 0.5.0."""
+"""Repository contract checks for EVE Map Assistant 0.5.1."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ def main() -> int:
     readme = (root / "README.md").read_text(encoding="utf-8")
 
     require(manifest["name"] == "eve-map-assistant", "Unexpected plugin name")
-    require(manifest["version"] == "0.5.0", "Capability/UX Plugin version must be 0.5.0")
+    require(manifest["version"] == "0.5.1", "Capability/UX Plugin version must be 0.5.1")
     require(manifest["skills"] == "./skills/", "Plugin must point to bundled skills")
     require(manifest["mcpServers"] == "./.mcp.json", "Plugin must link the bundled MCP file")
     require(manifest["interface"]["capabilities"] == ["Read", "Write"], "Plugin capabilities changed")
@@ -197,11 +197,11 @@ def main() -> int:
         "Install or enable the **EVE Map Assistant** Plugin",
         "Open a new AI task",
         "Ask naturally",
-        "Plugin version: `0.5.0`",
+        "Plugin version: `0.5.1`",
     ]:
         require(phrase in readme, f"README is missing simple user step: {phrase}")
 
-    print(f"EVE Map Assistant repository validation passed (28 tools: 9 read / 19 write; {len(cases)} behavior contracts; Plugin 0.5.0).")
+    print(f"EVE Map Assistant repository validation passed (28 tools: 9 read / 19 write; {len(cases)} behavior contracts; Plugin 0.5.1).")
     return 0
 
 

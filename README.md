@@ -4,7 +4,7 @@ Ask naturally about EVE systems, routes, jump ranges, temporary Mission markers,
 
 ## Start
 
-1. Start EVE Static Map Planner 0.6.0 or later and enable **Preferences > AI Control**.
+1. Start EVE Static Map Planner 1.0.0 or later and enable **Preferences > AI Control**.
 2. Install or enable the **EVE Map Assistant** Plugin.
 3. Open a new AI task so the Plugin is loaded.
 4. Ask naturally, for example: `Jita 在哪？` or `Jita 到 Amarr 怎么走？`

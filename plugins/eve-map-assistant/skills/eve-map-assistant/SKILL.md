@@ -7,7 +7,7 @@ description: Plan, inspect, and visualize EVE Online systems, routes, jump range
 
 Use only the `eve-static-map` MCP tools for map facts, current AI-owned map state, and map actions. Never fall back to PowerShell, cmd, bash, filesystem access, SQLite, curl, arbitrary HTTP, or remembered EVE data. Make the smallest tool chain that can answer the request, and reuse canonical system IDs returned earlier in the same conversation.
 
-If the tools are unavailable, tell the user to start EVE Static Map Planner 0.6.0 or later, enable **Preferences > AI Control**, and open a new AI task. Do not expose HTTP, PATH, launchers, credentials, or MCP setup to ordinary users. If a tool reports an error, report the real result and do not claim success.
+If the tools are unavailable, tell the user to start EVE Static Map Planner 1.0.0 or later, enable **Preferences > AI Control**, and open a new AI task. Do not expose HTTP, PATH, launchers, credentials, or MCP setup to ordinary users. If a tool reports an error, report the real result and do not claim success.
 
 ## Tool contract and ownership
 

@@ -193,7 +193,7 @@ def main() -> int:
         require(bool(case["expectedBehavior"].strip()), f"{case['name']} is missing expected behavior")
 
     for phrase in [
-        "Start EVE Static Map Planner 0.6.0 or later",
+        "Start EVE Static Map Planner 1.0.0 or later",
         "Install or enable the **EVE Map Assistant** Plugin",
         "Open a new AI task",
         "Ask naturally",

@@ -1,6 +1,6 @@
 {
-  "catalogSource": "Live eve-static-map MCP catalog audited 2026-08-30",
-  "expectedToolCount": 28,
+  "catalogSource": "EVE Static Map Planner 1.1.0 eve-static-map MCP catalog audited 2026-08-31",
+  "expectedToolCount": 30,
   "tools": [
     {
       "name": "search_system",
@@ -36,12 +36,23 @@
       "commonSequence": ["search_system", "get_system_markers"]
     },
     {
-      "name": "calculate_normal_route",
-      "purpose": "Calculate a query-only normal route with optional Ansiblex edges.",
+      "name": "list_wormholes",
+      "purpose": "List all temporary bidirectional Wormhole connections in the current application session.",
       "access": "READ",
-      "inputSchema": "startSystemId: number; destinationSystemId: number; useAnsiblex: boolean",
+      "inputSchema": "no inputs",
+      "sideEffects": "None.",
+      "expectedResult": "wormholes[] in deterministic canonical endpoint order.",
+      "whenToUse": "When the user asks about current Wormhole topology or connections for a resolved system.",
+      "preconditions": [],
+      "commonSequence": ["list_wormholes", "optionally filter returned endpoints"]
+    },
+    {
+      "name": "calculate_normal_route",
+      "purpose": "Calculate a query-only normal route with optional Ansiblex and Wormhole edges.",
+      "access": "READ",
+      "inputSchema": "startSystemId: number; destinationSystemId: number; useAnsiblex: boolean; useWormholes?: boolean = false",
       "sideEffects": "None; does not display a route.",
-      "expectedResult": "systemIds, total jumps, stargate jumps, and Ansiblex jumps.",
+      "expectedResult": "systemIds, totalJumps, stargateJumps, ansiblexJumps, and wormholeJumps.",
       "whenToUse": "For normal route answers that do not ask to change the map.",
       "preconditions": ["Both canonical system IDs resolved."],
       "commonSequence": ["search both endpoints", "calculate_normal_route"]
@@ -150,7 +161,7 @@
       "purpose": "Create temporary AI-owned visual state.",
       "access": "WRITE",
       "inputSchema": "title: string; viewId?: string",
-      "sideEffects": "Creates a persistent AI Mission in the requested or current View.",
+      "sideEffects": "Creates a session-only AI Mission in the requested or current View.",
       "expectedResult": "missionId, title, revision, and owning viewId.",
       "whenToUse": "Before displaying a new route, jump range, or temporary marker that should persist on the map.",
       "preconditions": ["Explicit user intent to change map state."],
@@ -168,12 +179,23 @@
       "commonSequence": ["search_system", "focus_system"]
     },
     {
-      "name": "show_normal_route",
-      "purpose": "Calculate and display a Mission-owned normal route.",
+      "name": "create_wormhole",
+      "purpose": "Create one temporary bidirectional Wormhole connection in global application-session topology.",
       "access": "WRITE",
-      "inputSchema": "missionId: string; startSystemId: number; destinationSystemId: number; useAnsiblex: boolean",
+      "inputSchema": "fromSystemId: number; toSystemId: number",
+      "sideEffects": "Adds one global session Wormhole; does not focus, switch Views, create a Mission, or persist across app exit.",
+      "expectedResult": "connection, created, and status; reverse duplicates return created=false and status=already_exists.",
+      "whenToUse": "Only when the user explicitly asks to add a Wormhole between two resolved systems.",
+      "preconditions": ["Both canonical system IDs resolved.", "Endpoints are distinct."],
+      "commonSequence": ["search both endpoints", "create_wormhole"]
+    },
+    {
+      "name": "show_normal_route",
+      "purpose": "Calculate and display a Mission-owned normal route with optional Ansiblex and current global Wormhole edges.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; startSystemId: number; destinationSystemId: number; useAnsiblex: boolean; useWormholes?: boolean = false",
       "sideEffects": "Adds a normal route to a temporary Mission.",
-      "expectedResult": "missionId, routeId, type, and route.",
+      "expectedResult": "missionId, routeId, type, and route including wormholeJumps.",
       "whenToUse": "When the user explicitly asks to show or draw a normal route.",
       "preconditions": ["Active missionId.", "Both canonical system IDs resolved."],
       "commonSequence": ["search both endpoints", "begin_mission when needed", "show_normal_route"]

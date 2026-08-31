@@ -41,28 +41,92 @@
       "prompt": "Jita 到 Amarr 怎么走？",
       "requiredTools": ["search_system", "calculate_normal_route"],
       "forbiddenTools": ["begin_mission", "calculate_capital_route", "show_normal_route"],
-      "expectedBehavior": "Treat the unqualified query as normal query-only routing with useAnsiblex=false."
+      "expectedBehavior": "Treat the unqualified query as normal query-only routing with useAnsiblex=false and useWormholes=false."
     },
     {
       "name": "query-only normal route",
       "prompt": "算一下 Jita 到 Amarr 的普通路线和跳数，不要显示。",
       "requiredTools": ["search_system", "calculate_normal_route"],
       "forbiddenTools": ["begin_mission", "show_normal_route", "show_capital_route", "fit_mission"],
-      "expectedBehavior": "Return the calculation without creating map state."
+      "expectedBehavior": "Return the calculation with useAnsiblex=false and useWormholes=false without creating map state."
     },
     {
       "name": "query normal route with ansiblex",
       "prompt": "算 Jita 到 Amarr 的普通路线，允许 Ansiblex。",
       "requiredTools": ["search_system", "calculate_normal_route"],
       "forbiddenTools": ["begin_mission", "show_normal_route"],
-      "expectedBehavior": "Calculate a normal route with useAnsiblex=true and no display mutation."
+      "expectedBehavior": "Calculate a normal route with useAnsiblex=true, useWormholes=false, and no display mutation."
     },
     {
       "name": "visual normal mission",
       "prompt": "把 Jita 到 Amarr 的普通路线画在地图上。",
       "requiredTools": ["search_system", "begin_mission", "show_normal_route"],
       "forbiddenTools": ["calculate_normal_route", "show_capital_route", "fit_mission"],
-      "expectedBehavior": "Create only the needed temporary Mission and display one normal route."
+      "expectedBehavior": "Create only the needed temporary Mission and display one normal route with useAnsiblex=false and useWormholes=false."
+    },
+    {
+      "name": "list current wormholes",
+      "prompt": "现在有哪些虫洞？",
+      "requiredTools": ["list_wormholes"],
+      "forbiddenTools": ["search_system", "create_wormhole", "begin_mission"],
+      "expectedBehavior": "Read the current application-session Wormhole topology from the map without guessing from chat memory."
+    },
+    {
+      "name": "create temporary wormhole",
+      "prompt": "加一条 1DQ1-A 到 NOL-M9 的虫洞。",
+      "requiredTools": ["search_system", "create_wormhole"],
+      "forbiddenTools": ["begin_mission", "switch_view", "focus_system"],
+      "expectedBehavior": "Resolve both endpoints once and create one bidirectional global session Wormhole without creating a Mission or changing the View."
+    },
+    {
+      "name": "duplicate wormhole is normal",
+      "prompt": "把 NOL-M9 到 1DQ1-A 的虫洞再加一次。",
+      "requiredTools": ["search_system", "create_wormhole"],
+      "forbiddenTools": ["begin_mission", "clear_mission", "remove_mission_route"],
+      "simulatedOutcome": "already_exists",
+      "expectedBehavior": "Treat the reverse-direction duplicate as the same bidirectional connection and report normally that it already exists."
+    },
+    {
+      "name": "query normal route with wormholes",
+      "prompt": "用虫洞算 A 到 B。",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route", "create_wormhole"],
+      "expectedBehavior": "Calculate with useAnsiblex=false and useWormholes=true using only the current map topology."
+    },
+    {
+      "name": "visual normal route with wormholes",
+      "prompt": "把 A 到 B 通过虫洞的路线画出来。",
+      "requiredTools": ["search_system", "begin_mission", "show_normal_route"],
+      "forbiddenTools": ["calculate_normal_route", "create_wormhole", "switch_view"],
+      "expectedBehavior": "Create or select the intended Mission and display the route with useAnsiblex=false and useWormholes=true; the Wormhole remains global rather than Mission-owned."
+    },
+    {
+      "name": "query normal route without wormholes",
+      "prompt": "不要用虫洞算 A 到 B。",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route", "list_wormholes"],
+      "expectedBehavior": "Calculate with useAnsiblex=false and useWormholes=false; do not assume current Wormholes should be used."
+    },
+    {
+      "name": "query normal route with ansiblex and wormholes",
+      "prompt": "用跳桥和虫洞都考虑进去，算 A 到 B。",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route", "create_wormhole"],
+      "expectedBehavior": "Calculate the normal route with useAnsiblex=true and useWormholes=true."
+    },
+    {
+      "name": "wormhole deletion unavailable",
+      "prompt": "删除 A 和 B 的虫洞。",
+      "requiredTools": [],
+      "forbiddenTools": ["create_wormhole", "clear_mission", "clear_mission_routes", "remove_mission_route"],
+      "expectedBehavior": "Do not call any mutation tool; explain that AI cannot remove Wormholes and direct the user to Wormhole Manager or the system right-click menu."
+    },
+    {
+      "name": "wormhole clear unavailable",
+      "prompt": "清空所有虫洞。",
+      "requiredTools": [],
+      "forbiddenTools": ["create_wormhole", "clear_mission", "clear_mission_routes", "clear_mission_jump_ranges"],
+      "expectedBehavior": "Do not substitute Mission clearing or invent a Wormhole clear tool; explain that all Wormholes must be cleared manually in the map UI."
     },
     {
       "name": "capital route missing range",

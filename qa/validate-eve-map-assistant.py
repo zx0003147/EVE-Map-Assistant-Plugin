@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repository contract checks for EVE Map Assistant 0.5.1."""
+"""Repository contract checks for EVE Map Assistant 0.6.0."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ EXPECTED_TOOLS = [
     "search_system",
     "get_system_info",
     "get_system_markers",
+    "list_wormholes",
     "calculate_normal_route",
     "calculate_capital_route",
     "list_views",
@@ -25,6 +26,7 @@ EXPECTED_TOOLS = [
     "get_mission",
     "begin_mission",
     "focus_system",
+    "create_wormhole",
     "show_normal_route",
     "show_capital_route",
     "remove_mission_route",
@@ -44,6 +46,7 @@ READ_TOOLS = {
     "search_system",
     "get_system_info",
     "get_system_markers",
+    "list_wormholes",
     "calculate_normal_route",
     "calculate_capital_route",
     "list_views",
@@ -60,6 +63,15 @@ REQUIRED_SCENARIOS = {
     "unqualified route defaults normal",
     "query-only normal route",
     "visual normal mission",
+    "list current wormholes",
+    "create temporary wormhole",
+    "duplicate wormhole is normal",
+    "query normal route with wormholes",
+    "visual normal route with wormholes",
+    "query normal route without wormholes",
+    "query normal route with ansiblex and wormholes",
+    "wormhole deletion unavailable",
+    "wormhole clear unavailable",
     "capital route missing range",
     "query-only capital route",
     "visual capital mission",
@@ -107,7 +119,7 @@ def main() -> int:
     readme = (root / "README.md").read_text(encoding="utf-8")
 
     require(manifest["name"] == "eve-map-assistant", "Unexpected plugin name")
-    require(manifest["version"] == "0.5.1", "Capability/UX Plugin version must be 0.5.1")
+    require(manifest["version"] == "0.6.0", "Capability/UX Plugin version must be 0.6.0")
     require(manifest["skills"] == "./skills/", "Plugin must point to bundled skills")
     require(manifest["mcpServers"] == "./.mcp.json", "Plugin must link the bundled MCP file")
     require(manifest["interface"]["capabilities"] == ["Read", "Write"], "Plugin capabilities changed")
@@ -136,7 +148,14 @@ def main() -> int:
     require('value: "eve-static-map"' in openai_yaml, "Skill must declare its MCP dependency")
     require("$eve-map-assistant" in openai_yaml, "Default prompt must name the skill")
     require("allow_implicit_invocation: true" in openai_yaml, "Natural-language implicit invocation must remain enabled")
-    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md must contain exactly the canonical 28 tools")
+    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md must contain exactly the canonical 30 tools")
+    require(len(EXPECTED_TOOLS) == 30, "Validator must define exactly 30 canonical tools")
+    wormhole_tools = [name for name in EXPECTED_TOOLS if "wormhole" in name]
+    require(wormhole_tools == ["list_wormholes", "create_wormhole"], "Only Wormhole list/create tools may exist")
+    require(
+        not any(any(action in name for action in ["remove", "delete", "clear", "replace", "edit"]) for name in wormhole_tools),
+        "A forbidden Wormhole mutation tool exists",
+    )
 
     lowered_skill = skill.lower()
     for required_rule in [
@@ -145,6 +164,7 @@ def main() -> int:
         "user-owned route drafts",
         "unqualified route",
         "useansiblex",
+        "usewormholes",
         "do not call both calculate and show",
         "a plain marker request is temporary",
         "use `create_saved_marker` only when the user clearly asks",
@@ -154,8 +174,19 @@ def main() -> int:
         "view labels are editable and unique",
         "never send a label where a `viewid` is required",
         "omit `viewid`",
+        "wormholes are not mission-owned or view-owned",
+        "ai cannot remove wormhole connections",
+        "already_exists",
+        "planning views and ai missions are session-only",
     ]:
         require(required_rule in lowered_skill, f"SKILL.md is missing decision rule: {required_rule}")
+    obsolete_restart_claim = "restored by the map across " + "restarts"
+    require(obsolete_restart_claim not in lowered_skill, "SKILL.md still claims Missions survive restarts")
+    require(
+        re.search(r"ai\s+(?:can|may|should)\s+(?:remove|delete|clear|replace|edit|update)\s+(?:temporary\s+)?wormhole", lowered_skill)
+        is None,
+        "SKILL.md claims AI can mutate existing Wormholes",
+    )
 
     artifact_text = "\n".join(
         [skill, openai_yaml, readme, json.dumps(manifest), json.dumps(mcp), json.dumps(cases_document), json.dumps(capabilities_document)]
@@ -166,17 +197,24 @@ def main() -> int:
     require(re.search(r"(?i)[a-z]:[\\/]+users[\\/]+[^<%$\\/\s]+", artifact_text) is None, "Artifacts contain a concrete user path")
     require(re.search(r"\b30\d{6}\b", skill) is None, "SKILL.md must not hard-code EVE system IDs")
 
-    require(capabilities_document["expectedToolCount"] == 28, "Capability fixture count changed")
+    require(capabilities_document["expectedToolCount"] == 30, "Capability fixture must declare 30 tools")
     capabilities = capabilities_document["tools"]
     require([tool["name"] for tool in capabilities] == EXPECTED_TOOLS, "Capability fixture must follow the canonical tool order")
-    require(len(capabilities) == 28, "Capability fixture must contain exactly 28 tools")
+    require(len(capabilities) == 30, "Capability fixture must contain exactly 30 tools")
     for tool in capabilities:
         expected_access = "READ" if tool["name"] in READ_TOOLS else "WRITE"
         require(tool["access"] == expected_access, f"Wrong access class for {tool['name']}")
         for field in ["purpose", "inputSchema", "sideEffects", "expectedResult", "whenToUse", "preconditions", "commonSequence"]:
             require(field in tool and tool[field] not in (None, ""), f"{tool['name']} is missing {field}")
-    require(sum(tool["access"] == "READ" for tool in capabilities) == 9, "Expected nine read tools")
-    require(sum(tool["access"] == "WRITE" for tool in capabilities) == 19, "Expected nineteen write tools")
+    require(sum(tool["access"] == "READ" for tool in capabilities) == 10, "Expected ten read tools")
+    require(sum(tool["access"] == "WRITE" for tool in capabilities) == 20, "Expected twenty write tools")
+    capability_by_name = {tool["name"]: tool for tool in capabilities}
+    for route_tool in ["calculate_normal_route", "show_normal_route"]:
+        require("useWormholes" in capability_by_name[route_tool]["inputSchema"], f"{route_tool} must expose useWormholes")
+        require("wormholeJumps" in capability_by_name[route_tool]["expectedResult"], f"{route_tool} must report wormholeJumps")
+    require(capability_by_name["list_wormholes"]["access"] == "READ", "list_wormholes must be read-only")
+    require(capability_by_name["create_wormhole"]["access"] == "WRITE", "create_wormhole must mutate topology")
+    require("already_exists" in capability_by_name["create_wormhole"]["expectedResult"], "Duplicate semantics are missing")
 
     require("real model selection remains Human QA" in cases_document["suite"], "Scenario suite must not claim model-choice automation")
     cases = cases_document["cases"]
@@ -193,15 +231,17 @@ def main() -> int:
         require(bool(case["expectedBehavior"].strip()), f"{case['name']} is missing expected behavior")
 
     for phrase in [
-        "Start EVE Static Map Planner 1.0.0 or later",
+        "Start EVE Static Map Planner 1.1.0 or later",
         "Install or enable the **EVE Map Assistant** Plugin",
         "Open a new AI task",
         "Ask naturally",
-        "Plugin version: `0.5.1`",
+        "Plugin version: `0.6.0`",
+        "Canonical 30-tool capability fixture",
+        "assistant can list current temporary Wormholes and create a new one, but it cannot delete",
     ]:
         require(phrase in readme, f"README is missing simple user step: {phrase}")
 
-    print(f"EVE Map Assistant repository validation passed (28 tools: 9 read / 19 write; {len(cases)} behavior contracts; Plugin 0.5.1).")
+    print(f"EVE Map Assistant repository validation passed (30 tools: 10 read / 20 write; {len(cases)} behavior contracts; Plugin 0.6.0).")
     return 0
 
 

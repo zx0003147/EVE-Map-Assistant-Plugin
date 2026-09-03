@@ -15,6 +15,8 @@ Saved Marker reads and permanent creates also require **Preferences > AI Control
 
 Wormhole AI access is intentionally limited: the assistant can list current temporary Wormholes and create a new one, but it cannot delete, clear, replace, or edit them. Remove Wormholes manually in the map's Wormhole Manager or a system's right-click menu.
 
+Normal and capital routes can include ordered required Waypoints. The assistant resolves each named stop, preserves the supplied order (including non-adjacent repeats), and submits the complete intent as one atomic route; if any segment fails, no partial Mission route is added. Destination may be omitted when the last Waypoint should be the endpoint.
+
 If the map is unavailable, start EVE Static Map Planner and enable AI Control; no PATH, launcher, PowerShell, or manual MCP configuration is required.
 
 ## Local development install

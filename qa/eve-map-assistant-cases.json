@@ -300,6 +300,35 @@
       "requiredTools": ["list_views", "delete_view"],
       "forbiddenTools": ["switch_view", "clear_mission"],
       "expectedBehavior": "Resolve and delete only that View, respecting the last-View protection."
+    },
+    {
+      "name": "ordered normal waypoints in one query",
+      "prompt": "算 A 经 B、C 到 D 的普通路线，不要显示。",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route"],
+      "expectedBehavior": "Resolve A, B, C, and D once, preserve waypointSystemIds in B then C order, and make exactly one calculate_normal_route call containing the entire route intent."
+    },
+    {
+      "name": "last waypoint is endpoint",
+      "prompt": "算 A 经过 B、C 的路线，C 就是终点。",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route"],
+      "expectedBehavior": "Resolve all three systems and make one call with waypointSystemIds=[B,C] and no destinationSystemId; never add a duplicate C destination."
+    },
+    {
+      "name": "non adjacent repeated waypoint retained",
+      "prompt": "算 A 到 B 再回 A，然后去 C 的路线。",
+      "requiredTools": ["search_system", "calculate_normal_route"],
+      "forbiddenTools": ["begin_mission", "show_normal_route"],
+      "expectedBehavior": "Preserve the intentional A to B to A to C explicit-stop order, reuse A's resolved ID, and submit one route call without deduplicating the non-adjacent repeat."
+    },
+    {
+      "name": "atomic visual capital waypoints",
+      "prompt": "按 6 LY 把 A 经 B、C 到 D 的旗舰路线画出来。",
+      "requiredTools": ["search_system", "begin_mission", "show_capital_route"],
+      "forbiddenTools": ["calculate_capital_route", "show_normal_route"],
+      "simulatedOutcome": "ROUTE_NOT_FOUND on B to C segment",
+      "expectedBehavior": "Resolve every explicit stop, call show_capital_route exactly once with the ordered Waypoint list, report the failed segment, and leave the Mission with no partial route."
     }
   ]
 }

@@ -48,25 +48,25 @@
     },
     {
       "name": "calculate_normal_route",
-      "purpose": "Calculate a query-only normal route with optional Ansiblex and Wormhole edges.",
+      "purpose": "Atomically calculate one query-only normal route through ordered Waypoints with optional Ansiblex and Wormhole edges.",
       "access": "READ",
-      "inputSchema": "startSystemId: number; destinationSystemId: number; useAnsiblex: boolean; useWormholes?: boolean = false",
+      "inputSchema": "startSystemId: number; waypointSystemIds?: number[]; destinationSystemId?: number; useAnsiblex: boolean; useWormholes?: boolean = false",
       "sideEffects": "None; does not display a route.",
-      "expectedResult": "systemIds, totalJumps, stargateJumps, ansiblexJumps, and wormholeJumps.",
+      "expectedResult": "One complete route with systemIds, ordered waypointSystemIds, explicitDestinationSystemId, totalJumps, stargateJumps, ansiblexJumps, and wormholeJumps; no partial result on segment failure.",
       "whenToUse": "For normal route answers that do not ask to change the map.",
-      "preconditions": ["Both canonical system IDs resolved."],
-      "commonSequence": ["search both endpoints", "calculate_normal_route"]
+      "preconditions": ["Start and every explicit stop resolved to canonical system IDs.", "At least one Waypoint or Destination.", "No adjacent explicit stops are equal."],
+      "commonSequence": ["search every unresolved explicit stop once", "one calculate_normal_route call containing the full ordered intent"]
     },
     {
       "name": "calculate_capital_route",
-      "purpose": "Calculate a query-only capital route for an effective range.",
+      "purpose": "Atomically calculate one query-only capital route through ordered Waypoints for an effective range.",
       "access": "READ",
-      "inputSchema": "startSystemId: number; destinationSystemId: number; effectiveRangeLy: number",
+      "inputSchema": "startSystemId: number; waypointSystemIds?: number[]; destinationSystemId?: number; effectiveRangeLy: number",
       "sideEffects": "None; does not display a route.",
-      "expectedResult": "systemIds, legs, total jumps, and total distance in LY.",
+      "expectedResult": "One complete route with ordered waypointSystemIds, explicitDestinationSystemId, systemIds, legs, total jumps, and total distance in LY; no partial result on segment failure.",
       "whenToUse": "For explicit capital or jump-route queries that do not ask for display.",
-      "preconditions": ["Both canonical system IDs resolved.", "User supplied effectiveRangeLy."],
-      "commonSequence": ["search both endpoints", "calculate_capital_route"]
+      "preconditions": ["Start and every explicit stop resolved to canonical system IDs.", "At least one Waypoint or Destination.", "No adjacent explicit stops are equal.", "User supplied effectiveRangeLy."],
+      "commonSequence": ["search every unresolved explicit stop once", "one calculate_capital_route call containing the full ordered intent"]
     },
     {
       "name": "list_views",
@@ -191,25 +191,25 @@
     },
     {
       "name": "show_normal_route",
-      "purpose": "Calculate and display a Mission-owned normal route with optional Ansiblex and current global Wormhole edges.",
+      "purpose": "Atomically calculate and display one Mission-owned normal route through ordered Waypoints with optional Ansiblex and current global Wormhole edges.",
       "access": "WRITE",
-      "inputSchema": "missionId: string; startSystemId: number; destinationSystemId: number; useAnsiblex: boolean; useWormholes?: boolean = false",
-      "sideEffects": "Adds a normal route to a temporary Mission.",
-      "expectedResult": "missionId, routeId, type, and route including wormholeJumps.",
+      "inputSchema": "missionId: string; startSystemId: number; waypointSystemIds?: number[]; destinationSystemId?: number; useAnsiblex: boolean; useWormholes?: boolean = false",
+      "sideEffects": "Adds exactly one complete normal route to a temporary Mission; adds nothing when any segment fails.",
+      "expectedResult": "missionId, routeId, type, and one complete route including ordered waypointSystemIds, explicitDestinationSystemId, and wormholeJumps.",
       "whenToUse": "When the user explicitly asks to show or draw a normal route.",
-      "preconditions": ["Active missionId.", "Both canonical system IDs resolved."],
-      "commonSequence": ["search both endpoints", "begin_mission when needed", "show_normal_route"]
+      "preconditions": ["Active missionId.", "Start and every explicit stop resolved.", "At least one Waypoint or Destination.", "No adjacent explicit stops are equal."],
+      "commonSequence": ["search every unresolved explicit stop once", "begin_mission when needed", "one show_normal_route call containing the full ordered intent"]
     },
     {
       "name": "show_capital_route",
-      "purpose": "Calculate and display a Mission-owned capital route.",
+      "purpose": "Atomically calculate and display one Mission-owned capital route through ordered Waypoints.",
       "access": "WRITE",
-      "inputSchema": "missionId: string; startSystemId: number; destinationSystemId: number; effectiveRangeLy: number",
-      "sideEffects": "Adds a capital route to a temporary Mission.",
-      "expectedResult": "missionId, routeId, type, and route.",
+      "inputSchema": "missionId: string; startSystemId: number; waypointSystemIds?: number[]; destinationSystemId?: number; effectiveRangeLy: number",
+      "sideEffects": "Adds exactly one complete capital route to a temporary Mission; adds nothing when any segment fails.",
+      "expectedResult": "missionId, routeId, type, and one complete route including ordered waypointSystemIds and explicitDestinationSystemId.",
       "whenToUse": "When the user explicitly asks to show an explicit-range capital route.",
-      "preconditions": ["Active missionId.", "Both canonical system IDs resolved.", "User supplied effectiveRangeLy."],
-      "commonSequence": ["search both endpoints", "begin_mission when needed", "show_capital_route"]
+      "preconditions": ["Active missionId.", "Start and every explicit stop resolved.", "At least one Waypoint or Destination.", "No adjacent explicit stops are equal.", "User supplied effectiveRangeLy."],
+      "commonSequence": ["search every unresolved explicit stop once", "begin_mission when needed", "one show_capital_route call containing the full ordered intent"]
     },
     {
       "name": "remove_mission_route",

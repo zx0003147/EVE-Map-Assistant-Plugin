@@ -89,6 +89,10 @@ If the user asks to remove one or clear all Wormholes, do not invent `remove_wor
 
 An unqualified route or “how do I get from A to B?” means a normal route. Explicit normal, stargate, Ansiblex, or Wormhole wording also selects normal routing. Use capital routing only when the user explicitly says capital, jump route, or equivalent. Capital routing requires an explicit effective range in light-years; ask for it when absent.
 
+Both route families accept an ordered `waypointSystemIds` list. Resolve Start, every user-named Waypoint, and an explicit Destination once, then preserve the user's exact Waypoint order. A Destination is optional when at least one Waypoint exists; when it is omitted, the final Waypoint is the effective endpoint. Start with neither a Waypoint nor Destination is invalid. Adjacent explicit stops must differ, but non-adjacent repeats are intentional and must remain (for example, A → B → A). Never sort or deduplicate Waypoints.
+
+Send the complete route intent in exactly one matching `calculate_*_route` or `show_*_route` call. Never split a Waypoint request into separate tool calls or display each leg as a separate Mission route. The map calculates every segment atomically: a failed segment returns an error and `show_*_route` adds no partial route. Route results retain the requested Waypoint IDs and distinguish an omitted Destination from an explicit one.
+
 For both `calculate_normal_route` and `show_normal_route`, default `useAnsiblex=false` and `useWormholes=false`. Set either option to `true` only when the user explicitly asks for that edge type. “Allow jump bridges” means `useAnsiblex=true, useWormholes=false`; “use current Wormholes” means `useAnsiblex=false, useWormholes=true`; “use jump bridges and Wormholes” means both are `true`. “Do not use Wormholes” keeps `useWormholes=false`. Never assume an unqualified route should use every current Wormhole.
 
 Normal-route results report `wormholeJumps` alongside Stargate and Ansiblex jump counts. Use that returned value when explaining whether or how much a route used Wormholes; never infer it from the endpoint list alone.
@@ -137,6 +141,8 @@ Use `get_system_markers` for marker queries and distinguish the persistent Saved
 - “搜索 Jita” → `search_system`.
 - “Jita 的安全等级和星门数？” → `search_system` → `get_system_info`.
 - “Jita 到 Amarr 怎么走？” → resolve both → `calculate_normal_route`.
+- “从 A 经 B、C 到 D” → resolve all four systems once → one `calculate_normal_route(waypointSystemIds=[B,C], destinationSystemId=D)`.
+- “从 A 经 B、C，不另设终点” → resolve all three systems once → one `calculate_normal_route(waypointSystemIds=[B,C])`; C is the effective endpoint.
 - “把 Jita 到 Amarr 画在地图上” → resolve both → `begin_mission` when needed → `show_normal_route`.
 - “现在有哪些虫洞？” → `list_wormholes`.
 - “加一条 1DQ1-A 到 NOL-M9 的虫洞” → resolve both → `create_wormhole`.

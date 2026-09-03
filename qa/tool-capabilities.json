@@ -1,6 +1,6 @@
 {
-  "catalogSource": "EVE Static Map Planner 1.1.0 eve-static-map MCP catalog audited 2026-08-31",
-  "expectedToolCount": 30,
+  "catalogSource": "EVE Static Map Planner 1.2.0 eve-static-map MCP catalog audited 2026-09-03",
+  "expectedToolCount": 32,
   "tools": [
     {
       "name": "search_system",
@@ -155,6 +155,17 @@
       "whenToUse": "To answer Mission-state questions or obtain opaque IDs before narrow edits.",
       "preconditions": ["Known missionId, normally from begin_mission or get_active_missions."],
       "commonSequence": ["get_active_missions when needed", "get_mission"]
+    },
+    {
+      "name": "list_eve_navigation_targets",
+      "purpose": "List safe EVE character identities and current availability for explicit Mission Normal navigation sending.",
+      "access": "READ",
+      "inputSchema": "no inputs",
+      "sideEffects": "None; does not send or change EVE navigation and never exposes OAuth credentials.",
+      "expectedResult": "targets[] with characterId, label, optional safe description, and available status.",
+      "whenToUse": "After an explicit user request to send one identified Mission Normal route to EVE and before selecting a character.",
+      "preconditions": ["Explicit EVE navigation-send intent."],
+      "commonSequence": ["get_active_missions/get_mission when needed", "list_eve_navigation_targets", "ask for an explicit character when missing or ambiguous", "send_mission_navigation_to_eve"]
     },
     {
       "name": "begin_mission",
@@ -331,6 +342,17 @@
       "whenToUse": "Only after explicit permanent-storage or Saved Marker intent.",
       "preconditions": ["Canonical systemId resolved.", "Saved Marker Access enabled.", "Explicit persistence intent."],
       "commonSequence": ["search_system", "create_saved_marker"]
+    },
+    {
+      "name": "send_mission_navigation_to_eve",
+      "purpose": "Replace one explicitly selected connected EVE character's navigation with one identified Mission-owned Normal route's exact authored targets.",
+      "access": "WRITE",
+      "inputSchema": "missionId: string; routeId: string; characterId: string",
+      "sideEffects": "External destructive mutation: replaces the selected character's existing EVE navigation; may partially apply before a failure.",
+      "expectedResult": "missionId, routeId, characterId, exact targetSystemIds, status, and safe message; failures may report partial progress or ambiguity.",
+      "whenToUse": "Exactly once only after the user explicitly asks to send one unambiguously identified Mission Normal route to a specifically identified connected character.",
+      "preconditions": ["Explicit EVE send intent.", "Exact Mission-owned Normal route resolved with missionId and routeId.", "Explicit available characterId resolved with list_eve_navigation_targets.", "Not a manual draft or Capital route."],
+      "commonSequence": ["get_active_missions/get_mission as needed", "list_eve_navigation_targets", "send_mission_navigation_to_eve", "report exact confirmed outcome without blind ambiguous retry"]
     }
   ]
 }

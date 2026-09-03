@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repository contract checks for EVE Map Assistant 0.6.0."""
+"""Repository contract checks for EVE Map Assistant 0.7.0."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ EXPECTED_TOOLS = [
     "delete_view",
     "get_active_missions",
     "get_mission",
+    "list_eve_navigation_targets",
     "begin_mission",
     "focus_system",
     "create_wormhole",
@@ -40,6 +41,7 @@ EXPECTED_TOOLS = [
     "fit_mission",
     "clear_mission",
     "create_saved_marker",
+    "send_mission_navigation_to_eve",
 ]
 
 READ_TOOLS = {
@@ -53,6 +55,7 @@ READ_TOOLS = {
     "get_current_view",
     "get_active_missions",
     "get_mission",
+    "list_eve_navigation_targets",
 }
 
 REQUIRED_SCENARIOS = {
@@ -86,6 +89,14 @@ REQUIRED_SCENARIOS = {
     "map offline",
     "app disconnected error",
     "route tool error",
+    "route calculation never auto sends to EVE",
+    "explicit Mission Normal send to named character",
+    "Mission send requires explicit character",
+    "ambiguous Mission route is not sent",
+    "Capital route send is prohibited",
+    "manual draft send is prohibited",
+    "Mission send preserves exact authored targets",
+    "ambiguous EVE send is not blindly retried",
 }
 
 
@@ -119,7 +130,7 @@ def main() -> int:
     readme = (root / "README.md").read_text(encoding="utf-8")
 
     require(manifest["name"] == "eve-map-assistant", "Unexpected plugin name")
-    require(manifest["version"] == "0.6.0", "Capability/UX Plugin version must be 0.6.0")
+    require(manifest["version"] == "0.7.0", "Capability/UX Plugin version must be 0.7.0")
     require(manifest["skills"] == "./skills/", "Plugin must point to bundled skills")
     require(manifest["mcpServers"] == "./.mcp.json", "Plugin must link the bundled MCP file")
     require(manifest["interface"]["capabilities"] == ["Read", "Write"], "Plugin capabilities changed")
@@ -148,8 +159,8 @@ def main() -> int:
     require('value: "eve-static-map"' in openai_yaml, "Skill must declare its MCP dependency")
     require("$eve-map-assistant" in openai_yaml, "Default prompt must name the skill")
     require("allow_implicit_invocation: true" in openai_yaml, "Natural-language implicit invocation must remain enabled")
-    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md must contain exactly the canonical 30 tools")
-    require(len(EXPECTED_TOOLS) == 30, "Validator must define exactly 30 canonical tools")
+    require(extract_tool_contract(skill) == EXPECTED_TOOLS, "SKILL.md must contain exactly the canonical 32 tools")
+    require(len(EXPECTED_TOOLS) == 32, "Validator must define exactly 32 canonical tools")
     wormhole_tools = [name for name in EXPECTED_TOOLS if "wormhole" in name]
     require(wormhole_tools == ["list_wormholes", "create_wormhole"], "Only Wormhole list/create tools may exist")
     require(
@@ -178,6 +189,14 @@ def main() -> int:
         "ai cannot remove wormhole connections",
         "already_exists",
         "planning views and ai missions are session-only",
+        "send_mission_navigation_to_eve` is an external eve mutation",
+        "manual user drafts are not visible to this tool and are structurally prohibited",
+        "capital routes are structurally prohibited",
+        "require the user to identify one returned `characterid`, even when only one character is available",
+        "start and calculated transit systems are excluded",
+        "a stale displayed calculation does not block sending and must not trigger recalculation",
+        "without compression, sampling, deduplication, or truncation",
+        "do not retry an ambiguous external mutation blindly",
     ]:
         require(required_rule in lowered_skill, f"SKILL.md is missing decision rule: {required_rule}")
     obsolete_restart_claim = "restored by the map across " + "restarts"
@@ -197,17 +216,17 @@ def main() -> int:
     require(re.search(r"(?i)[a-z]:[\\/]+users[\\/]+[^<%$\\/\s]+", artifact_text) is None, "Artifacts contain a concrete user path")
     require(re.search(r"\b30\d{6}\b", skill) is None, "SKILL.md must not hard-code EVE system IDs")
 
-    require(capabilities_document["expectedToolCount"] == 30, "Capability fixture must declare 30 tools")
+    require(capabilities_document["expectedToolCount"] == 32, "Capability fixture must declare 32 tools")
     capabilities = capabilities_document["tools"]
     require([tool["name"] for tool in capabilities] == EXPECTED_TOOLS, "Capability fixture must follow the canonical tool order")
-    require(len(capabilities) == 30, "Capability fixture must contain exactly 30 tools")
+    require(len(capabilities) == 32, "Capability fixture must contain exactly 32 tools")
     for tool in capabilities:
         expected_access = "READ" if tool["name"] in READ_TOOLS else "WRITE"
         require(tool["access"] == expected_access, f"Wrong access class for {tool['name']}")
         for field in ["purpose", "inputSchema", "sideEffects", "expectedResult", "whenToUse", "preconditions", "commonSequence"]:
             require(field in tool and tool[field] not in (None, ""), f"{tool['name']} is missing {field}")
-    require(sum(tool["access"] == "READ" for tool in capabilities) == 10, "Expected ten read tools")
-    require(sum(tool["access"] == "WRITE" for tool in capabilities) == 20, "Expected twenty write tools")
+    require(sum(tool["access"] == "READ" for tool in capabilities) == 11, "Expected eleven read tools")
+    require(sum(tool["access"] == "WRITE" for tool in capabilities) == 21, "Expected twenty-one write tools")
     capability_by_name = {tool["name"]: tool for tool in capabilities}
     for route_tool in ["calculate_normal_route", "show_normal_route"]:
         require("useWormholes" in capability_by_name[route_tool]["inputSchema"], f"{route_tool} must expose useWormholes")
@@ -215,6 +234,13 @@ def main() -> int:
     require(capability_by_name["list_wormholes"]["access"] == "READ", "list_wormholes must be read-only")
     require(capability_by_name["create_wormhole"]["access"] == "WRITE", "create_wormhole must mutate topology")
     require("already_exists" in capability_by_name["create_wormhole"]["expectedResult"], "Duplicate semantics are missing")
+    require(capability_by_name["list_eve_navigation_targets"]["access"] == "READ", "EVE targets must be read-only")
+    send_navigation = capability_by_name["send_mission_navigation_to_eve"]
+    require(send_navigation["access"] == "WRITE", "EVE navigation send must be a write")
+    require(send_navigation["inputSchema"] == "missionId: string; routeId: string; characterId: string", "EVE send must require three explicit identities")
+    require("replaces" in send_navigation["sideEffects"].lower(), "EVE send must disclose replacement semantics")
+    require("partial" in send_navigation["sideEffects"].lower(), "EVE send must disclose partial mutation risk")
+    require(any("manual draft" in item.lower() and "capital" in item.lower() for item in send_navigation["preconditions"]), "EVE send exclusions are missing")
 
     require("real model selection remains Human QA" in cases_document["suite"], "Scenario suite must not claim model-choice automation")
     cases = cases_document["cases"]
@@ -229,19 +255,36 @@ def main() -> int:
         require(required.isdisjoint(forbidden), f"{case['name']} requires and forbids the same tool")
         require(bool(case["prompt"].strip()), f"{case['name']} is missing a prompt")
         require(bool(case["expectedBehavior"].strip()), f"{case['name']} is missing expected behavior")
+    explicit_send_case = next(case for case in cases if case["name"] == "explicit Mission Normal send to named character")
+    require(
+        set(explicit_send_case["requiredTools"]) == {
+            "get_active_missions", "get_mission", "list_eve_navigation_targets", "send_mission_navigation_to_eve"
+        },
+        "Explicit EVE send scenario must resolve Mission, route, and character before sending",
+    )
+    for case_name in [
+        "route calculation never auto sends to EVE",
+        "Mission send requires explicit character",
+        "ambiguous Mission route is not sent",
+        "Capital route send is prohibited",
+        "manual draft send is prohibited",
+    ]:
+        case = next(item for item in cases if item["name"] == case_name)
+        require("send_mission_navigation_to_eve" in case["forbiddenTools"], f"{case_name} must forbid EVE mutation")
 
     for phrase in [
-        "Start EVE Static Map Planner 1.1.0 or later",
+        "Start EVE Static Map Planner 1.2.0 or later",
         "Install or enable the **EVE Map Assistant** Plugin",
         "Open a new AI task",
         "Ask naturally",
-        "Plugin version: `0.6.0`",
-        "Canonical 30-tool capability fixture",
+        "Plugin version: `0.7.0`",
+        "Canonical 32-tool capability fixture",
         "assistant can list current temporary Wormholes and create a new one, but it cannot delete",
+        "Only an explicitly requested Mission-owned Normal route can be sent to an explicitly selected connected EVE character",
     ]:
         require(phrase in readme, f"README is missing simple user step: {phrase}")
 
-    print(f"EVE Map Assistant repository validation passed (30 tools: 10 read / 20 write; {len(cases)} behavior contracts; Plugin 0.6.0).")
+    print(f"EVE Map Assistant repository validation passed (32 tools: 11 read / 21 write; {len(cases)} behavior contracts; Plugin 0.7.0).")
     return 0
 
 

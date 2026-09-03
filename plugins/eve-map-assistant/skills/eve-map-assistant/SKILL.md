@@ -7,7 +7,7 @@ description: Plan, inspect, and visualize EVE Online systems, routes, jump range
 
 Use only the `eve-static-map` MCP tools for map facts, current AI-owned map state, and map actions. Never fall back to PowerShell, cmd, bash, filesystem access, SQLite, curl, arbitrary HTTP, or remembered EVE data. Make the smallest tool chain that can answer the request, and reuse canonical system IDs returned earlier in the same conversation.
 
-If the tools are unavailable, tell the user to start EVE Static Map Planner 1.1.0 or later, enable **Preferences > AI Control**, and open a new AI task. Do not expose HTTP, PATH, launchers, credentials, or MCP setup to ordinary users. If a tool reports an error, report the real result and do not claim success.
+If the tools are unavailable, tell the user to start EVE Static Map Planner 1.2.0 or later, enable **Preferences > AI Control**, and open a new AI task. Do not expose HTTP, PATH, launchers, credentials, or MCP setup to ordinary users. If a tool reports an error, report the real result and do not claim success.
 
 ## Tool contract and ownership
 
@@ -26,6 +26,7 @@ switch_view
 delete_view
 get_active_missions
 get_mission
+list_eve_navigation_targets
 begin_mission
 focus_system
 create_wormhole
@@ -42,11 +43,12 @@ clear_mission_markers
 fit_mission
 clear_mission
 create_saved_marker
+send_mission_navigation_to_eve
 ```
 
-Do not invent tools. Read tools are `search_system`, `get_system_info`, `get_system_markers`, `list_wormholes`, both `calculate_*_route` tools, `list_views`, `get_current_view`, `get_active_missions`, and `get_mission`. `create_wormhole` changes global session topology. All remaining tools change View, Mission, viewport, or marker state.
+Do not invent tools. Read tools are `search_system`, `get_system_info`, `get_system_markers`, `list_wormholes`, both `calculate_*_route` tools, `list_views`, `get_current_view`, `get_active_missions`, `get_mission`, and `list_eve_navigation_targets`. `create_wormhole` changes global session topology. Most remaining tools change View, Mission, viewport, or marker state; `send_mission_navigation_to_eve` instead replaces navigation in the explicitly selected EVE character.
 
-Planning Views and AI Missions are session-only. A Mission is AI-owned visual state attached to one stable View ID for the current application session; it is not restored after Map Planner exits. Mission tools never mutate user routes, user jump ranges, user markers, Ansiblex data, Wormhole topology, preferences, or the EVE client. Calculating or displaying a route never authorizes **Send Draft to EVE** or **Set EVE Destination**; those remain explicit manual actions in the app.
+Planning Views and AI Missions are session-only. A Mission is AI-owned visual state attached to one stable View ID for the current application session; it is not restored after Map Planner exits. Mission display tools never mutate user routes, user jump ranges, user markers, Ansiblex data, Wormhole topology, preferences, or the EVE client. Calculating or displaying a route never authorizes **Send Navigation to EVE**. EVE navigation changes require a separate, explicit user request and the narrow workflow below.
 
 ## View resolution
 
@@ -117,6 +119,22 @@ For follow-ups, call `get_active_missions` and then `get_mission` only as needed
 - Use `fit_mission` only when the user asks to fit or bring the whole Mission into view.
 - Remove one object with the matching `remove_*` tool, clear one Mission object class with the matching `clear_mission_*` tool, and use `clear_mission` only for an explicit whole-Mission removal. Inspect first when an opaque ID is needed. Never substitute a broader deletion.
 
+## Send Mission Navigation to EVE
+
+`send_mission_navigation_to_eve` is an external EVE mutation. Use it only when the user explicitly asks to send, replace, or set a route in EVE. A request merely to calculate, show, draw, inspect, or edit a route does not authorize sending.
+
+Only one identified Mission-owned Normal route is eligible. Manual user drafts are not visible to this tool and are structurally prohibited. Capital routes are structurally prohibited. Never create or recalculate a route merely to make it eligible, and never infer a route from what is currently displayed.
+
+Before sending:
+
+1. Use `get_active_missions` and `get_mission` as needed to identify exactly one Mission Normal route and obtain its opaque `missionId` and `routeId`. If the request could refer to more than one route, ask the user to choose.
+2. Call `list_eve_navigation_targets`. Require the user to identify one returned `characterId`, even when only one character is available. If no character was specified, or the name is ambiguous, ask rather than choosing automatically. A disconnected or unavailable character is not a fallback opportunity.
+3. Call `send_mission_navigation_to_eve` exactly once with that `missionId`, `routeId`, and `characterId`.
+
+The sent targets come from the stored Mission route intent: every ordered Waypoint followed by its optional explicit Destination. A stale displayed calculation does not block sending and must not trigger recalculation. Start and calculated transit systems are excluded. Stargate, Ansiblex, and Wormhole transit mixtures do not alter this contract. Non-adjacent repeated targets remain, and the full target sequence is sent without compression, sampling, deduplication, or truncation. A successful call replaces the selected character's existing EVE navigation.
+
+Do not retry an ambiguous external mutation blindly. If sending returns `TIMEOUT`, `SESSION_CHANGED`, a connection-abort/unknown result, or another message saying EVE may already have changed, tell the user to inspect EVE before deciding whether to retry. Report partial progress exactly when returned; never claim rollback or full success.
+
 ## Marker intent and lifetime
 
 A plain marker request is temporary. Requests such as “mark 1DQ”, “mark Jita as dangerous”, “remember this system is dangerous”, or “this system is important” use `add_mission_marker`, creating a Mission when needed. Importance, a role such as staging, or the word “remember” alone is not permission for persistent storage.
@@ -134,6 +152,7 @@ Use `get_system_markers` for marker queries and distinguish the persistent Saved
 - On `APP_DISCONNECTED`, say no AI Control session is available and ask the user to start the map and enable AI Control in Preferences. Do not try another control path.
 - On `CAPABILITY_DENIED`, explain that Saved Marker access is disabled and the requested read or create did not occur.
 - On `SESSION_CHANGED`, do not blindly replay an uncertain mutation. Inspect current Mission state when useful, and continue only when the intended state is clear.
+- On an ambiguous EVE navigation result or `TIMEOUT`, do not blindly retry; ask the user to inspect the selected character's EVE route first.
 - Respect ambiguity, `SYSTEM_NOT_FOUND`, `INVALID_ARGUMENT`, `INVALID_MARKER_DATA`, `DATABASE_UNAVAILABLE`, `IDEMPOTENCY_CONFLICT`, limits, and all other errors. Summarize only results confirmed by tools.
 
 ## Intent examples
@@ -154,3 +173,6 @@ Use `get_system_markers` for marker queries and distinguish the persistent Saved
 - “在 Scout View 画 Jita 到 Amarr” → `list_views` → resolve both systems → `begin_mission(viewId)` → `show_normal_route`.
 - “在 1DQ 做个红色危险标记” → `search_system` → `begin_mission` when needed → `add_mission_marker`.
 - “永久保存 1DQ，并加 DANGER 标签” → `search_system` → `create_saved_marker`.
+- “把 Delve Move 任务里的普通路线发送到 EVE，角色是 Alice” → `get_active_missions` → `get_mission` → `list_eve_navigation_targets` → one `send_mission_navigation_to_eve(missionId, routeId, characterId)`.
+- “把刚算的路线发到 EVE” without an identified Mission route and character → ask for the missing route/character; do not send a manual draft and do not choose automatically.
+- “把这条旗舰路线发到 EVE” → no send tool call; explain that Capital sending is unavailable.

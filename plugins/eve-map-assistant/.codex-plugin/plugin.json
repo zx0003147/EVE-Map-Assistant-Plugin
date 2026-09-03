@@ -1,7 +1,7 @@
 {
   "name": "eve-map-assistant",
-  "version": "0.6.0",
-  "description": "Find EVE systems and safely work with routes, jump ranges, markers, and temporary Wormholes in EVE Static Map Planner.",
+  "version": "0.7.0",
+  "description": "Find EVE systems and safely work with routes, jump ranges, markers, temporary Wormholes, and explicit Mission Normal navigation sending in EVE Static Map Planner.",
   "author": {
     "name": "EVE Static Map Planner"
   },
@@ -10,7 +10,7 @@
   "interface": {
     "displayName": "EVE Map Assistant",
     "shortDescription": "Ask naturally about the running EVE map",
-    "longDescription": "Use natural language to find EVE systems and safely plan, inspect, or visualize routes, jump ranges, temporary Missions, markers, and temporary Wormhole connections in EVE Static Map Planner.",
+    "longDescription": "Use natural language to find EVE systems; safely plan, inspect, or visualize routes, jump ranges, temporary Missions, markers, and temporary Wormholes; and explicitly send an identified Mission Normal route to a selected EVE character.",
     "developerName": "EVE Static Map Planner",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],
